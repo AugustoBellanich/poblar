@@ -40,8 +40,9 @@ def comparar_radios(
     if "area_m2_nuevo" not in m:
         m["area_m2_nuevo"] = gpd.GeoSeries(m["geometry_nuevo"], crs=a.crs).area
 
-    orden_a = a["id_radio"].tolist()
-    orden_b = b["id_radio"].tolist()
+    comunes = ids_a & ids_b
+    orden_a = [i for i in a["id_radio"] if i in comunes]
+    orden_b = [i for i in b["id_radio"] if i in comunes]
     filas = [
         ("radios (nuevo / referencia)", f"{len(a)} / {len(b)}", len(a) == len(b)),
         ("ids solo en nuevo", len(ids_a - ids_b), not (ids_a - ids_b)),
@@ -55,7 +56,7 @@ def comparar_radios(
          int((m[f"{campo_region}_nuevo"].astype(str) != m[f"{campo_region}_ref"].astype(str)).sum()), None),
         ("radios con área distinta (> tolerancia)",
          int(((m["area_m2_nuevo"] - m["area_m2_ref"]).abs() > tolerancia_area_m2).sum()), None),
-        ("mismo orden de rasterización", orden_a == orden_b, orden_a == orden_b),
+        ("mismo orden de rasterización (radios en común)", orden_a == orden_b, orden_a == orden_b),
     ]
     df = pd.DataFrame(filas, columns=["comparación", "resultado", "ok"])
     df.loc[df["ok"].isna(), "ok"] = df.loc[df["ok"].isna(), "resultado"].eq(0)
