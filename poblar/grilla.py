@@ -29,9 +29,17 @@ ETAPA = "2_grilla"
 METACATEGORIAS = {"no_habitable": 0, "urbano": 1, "no_urbano": 2}
 
 
-def ventanas_por_filas(alto: int, ancho: int, filas: int):
-    """Ventanas de franjas horizontales completas (recorrido por bloques)."""
-    for fila in range(0, alto, filas):
+def ventanas_por_filas(alto: int, ancho: int, filas: int, avance: str | None = None):
+    """Ventanas de franjas horizontales completas (recorrido por bloques).
+
+    Args:
+        avance: Si se indica, se informa en el registro el porcentaje recorrido cada 10 %.
+    """
+    total = -(-alto // filas)
+    paso = max(1, total // 10)
+    for i, fila in enumerate(range(0, alto, filas)):
+        if avance and i and i % paso == 0:
+            log.info("  %s: %d %%", avance, round(100 * i / total))
         yield Window(0, fila, ancho, min(filas, alto - fila))
 
 
@@ -109,7 +117,7 @@ def construir(ejecucion: Ejecucion, radios: gpd.GeoDataFrame | None = None) -> d
         perfil.update(dtype="uint8", nodata=nodata_cob, compress="lzw", tiled=True,
                       blockxsize=256, blockysize=256, BIGTIFF="IF_SAFER")
         with rasterio.open(salida, "w", **perfil) as dst:
-            for w in ventanas_por_filas(src.height, src.width, filas):
+            for w in ventanas_por_filas(src.height, src.width, filas, avance="reclasificación"):
                 orig = src.read(1, window=w)
                 valido = orig != src.nodata if src.nodata is not None else np.ones(orig.shape, bool)
                 v, n = np.unique(orig[valido], return_counts=True)

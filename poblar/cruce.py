@@ -131,7 +131,7 @@ def construir(ejecucion: Ejecucion, radios: pd.DataFrame | None = None) -> pd.Da
     srcs = {v: rasterio.open(todas[v]) for v in pedidas}
     try:
         with rasterio.open(ids_tif) as si, rasterio.open(tematica) as st:
-            for w in ventanas_por_filas(si.height, si.width, filas_bloque):
+            for w in ventanas_por_filas(si.height, si.width, filas_bloque, avance="cruce"):
                 ids = si.read(1, window=w)
                 cat = st.read(banda, window=w)
                 zona = lut_zona[ids]

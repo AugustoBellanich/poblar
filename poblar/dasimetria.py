@@ -62,7 +62,7 @@ def composicion(ids_tif: Path, cobertura: Path, n: int, filas: int) -> tuple[np.
     px_u = np.zeros(n + 1, dtype=np.int64)
     px_nu = np.zeros(n + 1, dtype=np.int64)
     with rasterio.open(ids_tif) as si, rasterio.open(cobertura) as sc:
-        for w in ventanas_por_filas(si.height, si.width, filas):
+        for w in ventanas_por_filas(si.height, si.width, filas, avance="composición"):
             ids = si.read(1, window=w).ravel()
             cls = sc.read(1, window=w).ravel()
             m = ids > 0
@@ -163,7 +163,7 @@ def construir(ejecucion: Ejecucion, radios: gpd.GeoDataFrame | None = None) -> g
         perfil = si.profile.copy()
         perfil.update(dtype="float32", nodata=0, compress="lzw", BIGTIFF="IF_SAFER")
         with rasterio.open(pesos_tif, "w", **perfil) as dst:
-            for w in ventanas_por_filas(si.height, si.width, filas):
+            for w in ventanas_por_filas(si.height, si.width, filas, avance="suma de pesos"):
                 ids = si.read(1, window=w)
                 cls = sc.read(1, window=w)
                 p = np.zeros(ids.shape, dtype=np.float32)
@@ -229,7 +229,7 @@ def construir(ejecucion: Ejecucion, radios: gpd.GeoDataFrame | None = None) -> g
         perfil.update(dtype="float32", nodata=NODATA_POB)
         salidas = {k: rasterio.open(r, "w", **perfil) for k, r in rutas.items()}
         try:
-            for w in ventanas_por_filas(si.height, si.width, filas):
+            for w in ventanas_por_filas(si.height, si.width, filas, avance="población y variables"):
                 ids = si.read(1, window=w)
                 pesos = sp.read(1, window=w)
                 pesos_ef = np.where(lut_c[ids], np.float32(1.0), pesos).astype(np.float32)

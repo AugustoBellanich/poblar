@@ -152,7 +152,8 @@ def construir(ejecucion: Ejecucion) -> list[dict[str, Any]]:
                    for prod, nombre in pendientes.items()}
         for fut in as_completed(futuros):
             fila = fut.result()
-            log.info("[%s] publicado %s → %s", ETAPA, fila["producto"], fila["archivo"])
+            log.info("[%s] publicado %d/%d: %s → %s", ETAPA, len(filas) + 1, len(nombres),
+                     fila["producto"], fila["archivo"])
             filas.append(fila)
             registrar(fila)
             _escribir_tabla(tabla, filas)
