@@ -16,7 +16,7 @@ insumos:                      # rutas relativas a la carpeta de insumos (paráme
     ruta: MB_prais_2023_100m.tif  # MapBiomas Argentina PRAIS26 (OE1), cobertura 2023, 100 m, EPSG:4326
     sha256: null
   degradacion:
-    ruta: CondicionFinal_Estado_Reporte2_4326.tif  # OE1 (OE 1.4), mapa de Reporte 2 (CondicionFinal_Estado), EPSG:4326
+    ruta: degradacion_reporte_2022.tif  # copia de CondicionFinal_Estado_Reporte2_4326.tif (OE1, OE 1.4, período de reporte 2, EPSG:4326)
     sha256: null
   regiones:
     ruta: regiones_PRAIS.gpkg

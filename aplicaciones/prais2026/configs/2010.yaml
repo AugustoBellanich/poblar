@@ -16,7 +16,7 @@ insumos:                      # rutas relativas a la carpeta de insumos (paráme
     ruta: MB_prais_2015_100m.tif  # MapBiomas Argentina PRAIS26 (OE1), cobertura 2015, 100 m, EPSG:4326
     sha256: null
   degradacion:
-    ruta: OE14_sinCOS_Referencia_Corregido_4326.tif  # OE1 (OE 1.4), mapa de Referencia (sinCOS, corregido), EPSG:4326
+    ruta: degradacion_referencia_2010.tif  # copia de OE14_sinCOS_Referencia_Corregido_4326.tif (OE1, OE 1.4, período de referencia, EPSG:4326)
     sha256: null
   regiones:
     ruta: regiones_PRAIS.gpkg
