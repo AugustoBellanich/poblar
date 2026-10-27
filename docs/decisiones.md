@@ -16,7 +16,7 @@ Cada decisión de diseño del proyecto, con su fecha, su motivo y las alternativ
 - **MIT:** igual de permisiva y más corta, pero sin concesión de patentes ni obligación de señalar cambios.
 - **GPL 3.0:** obliga a publicar las modificaciones bajo la misma licencia; limita la integración en sistemas institucionales o productos de terceros.
 
-**Pendiente.** Confirmar con INTA la titularidad del código desarrollado en el marco institucional. Mientras tanto, `NOTICE` lo atribuye a «los autores de poblar» (`AUTORES.md`).
+**Titularidad.** El código pertenece al grupo de trabajo del OE2, no a una institución en particular. `NOTICE` lo atribuye a «los autores de poblar» y `AUTORES.md` lista a las personas. Pendiente: acordar en el grupo la incorporación de otros autores y la mención de las instituciones participantes.
 
 **Alcance.** La licencia cubre solo el código. Los insumos (censos de INDEC, cartografía de CONICET, MapBiomas, capas del OE1) conservan sus propias licencias y no se distribuyen en el repositorio.
 

@@ -1,5 +1,7 @@
 # Autores
 
+El código pertenece al grupo de trabajo del OE2. La lista de autores y de instituciones participantes se completa por acuerdo del grupo.
+
 - Augusto Exequiel Bellanich — INTA, EEA Catamarca
 
 ## Origen del método
