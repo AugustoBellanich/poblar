@@ -139,8 +139,9 @@ def test_excluir_fuera_de_region(tmp_path: Path, insumos: Path) -> None:
 
 def test_referencia_distinta_corta(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"referencia.poblacion_integrada": 999})
-    with pytest.raises(ControlFallido):
+    with pytest.raises(ControlFallido) as e:
         ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
+    assert (e.value.carpeta / "controles.csv").exists()
 
 
 def test_falta_criterio_no_arranca(tmp_path: Path, insumos: Path) -> None:

@@ -8,6 +8,7 @@ import json
 import logging
 import platform
 import shutil
+import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -26,8 +27,29 @@ PAQUETES_REGISTRADOS = [
 BLOQUE_HASH = 1 << 24  # 16 MB
 
 
+def version_codigo() -> str:
+    """Commit de git del código de poblar en uso, o 'desconocido' si no es un clon."""
+    raiz = Path(__file__).resolve().parent.parent
+    try:
+        r = subprocess.run(["git", "-C", str(raiz), "rev-parse", "HEAD"],
+                           capture_output=True, text=True, timeout=10, check=True)
+        sucio = subprocess.run(["git", "-C", str(raiz), "status", "--porcelain", "--", "poblar"],
+                               capture_output=True, text=True, timeout=10, check=False).stdout.strip()
+        return r.stdout.strip() + (" (con cambios locales)" if sucio else "")
+    except (OSError, subprocess.SubprocessError):
+        return "desconocido"
+
+
 class ControlFallido(RuntimeError):
-    """Un control bloqueante no se cumplió con el modo 'detener'."""
+    """Un control bloqueante no se cumplió con el modo 'detener'.
+
+    Attributes:
+        carpeta: Carpeta de la ejecución detenida, con sus controles y balance.
+    """
+
+    def __init__(self, mensaje: str, carpeta: Path | None = None) -> None:
+        super().__init__(mensaje)
+        self.carpeta = carpeta
 
 
 def sha256(ruta: str | Path) -> str:
@@ -108,6 +130,7 @@ class Ejecucion:
             lineas.append(f"gdal: {rasterio.__gdal_version__}")
         except ImportError:
             pass
+        lineas.append(f"poblar_commit: {version_codigo()}")
         (self.carpeta / "entorno.txt").write_text("\n".join(lineas) + "\n", encoding="utf-8")
 
     # ------------------------------------------------------------ rutas
@@ -131,7 +154,7 @@ class Ejecucion:
         modo = (self.cfg.get("controles") or {}).get("modo", "detener")
         if not v.ok and v.bloqueante and modo == "detener":
             self.guardar_registros()
-            raise ControlFallido(f"[{v.etapa}] {v.nombre}: {v.detalle}")
+            raise ControlFallido(f"[{v.etapa}] {v.nombre}: {v.detalle}", carpeta=self.carpeta)
         return v
 
     def guardar_registros(self) -> None:
