@@ -30,6 +30,21 @@ OBLIGATORIAS: dict[str, list[str]] = {
         "region.excluir_fuera",
         "grilla_trabajo.crs",
     ],
+    "grilla": [
+        "grilla_trabajo.modo",
+        "grilla_trabajo.extension",
+        "grilla_trabajo.remuestreo_cobertura",
+        "cobertura.insumo",
+        "cobertura.clases",
+        "cobertura.codigo_nodata",
+    ],
+    "dasimetria": [
+        "dasimetria.campo_ambito",
+        "dasimetria.ambitos",
+        "dasimetria.ponderadores.normalizar_por",
+        "dasimetria.ponderadores.peso_urbano",
+        "dasimetria.variables",
+    ],
 }
 
 VALORES_PERMITIDOS: dict[str, set[Any]] = {
@@ -37,6 +52,10 @@ VALORES_PERMITIDOS: dict[str, set[Any]] = {
     "radios.id_desde": {"tabla", "mapa"},
     "radios.orden": {"area_desc", "area_desc_estable"},
     "controles.modo": {"detener", "advertir"},
+    "grilla_trabajo.modo": {"gdal_auto", "fija"},
+    "grilla_trabajo.extension": {"radios", "regiones"},
+    "grilla_trabajo.remuestreo_cobertura": {"near", "mode"},
+    "dasimetria.ponderadores.peso_urbano": {"complemento", "uno"},
 }
 
 

@@ -12,6 +12,9 @@ insumos:                      # rutas relativas a la carpeta de insumos (paráme
   radios:
     ruta: radios_2022.zip       # CONICET RI 11336/149711, RADIOS_2022_V2025-1
     sha256: 5bbd7d02fc247e1d2e6c5dbe849db6f2650c316cc3900dcbee2f8f14e68e5460
+  mapbiomas:
+    ruta: MB_prais_2023_100m.tif  # MapBiomas Argentina PRAIS26 (OE1), cobertura 2023, 100 m, EPSG:4326
+    sha256: null
   regiones:
     ruta: regiones_PRAIS.gpkg
     sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
@@ -31,6 +34,57 @@ region:
 
 grilla_trabajo:
   crs: 5347                   # POSGAR 2007 / Argentina 4 (C2 1.1)
+  modo: gdal_auto             # C2 3.1: gdalwarp sin -tr; GDAL estima la resolución (propuesto: fija, 80 m)
+  extension: radios           # C2 3.1: límites de los radios curados (propuesto: regiones)
+  remuestreo_cobertura: near  # C2 3.1
+
+cobertura:
+  insumo: mapbiomas
+  codigo_nodata: 0            # C2 3.4: 0 es no habitable y también NoData
+  clases:                     # mapeo_clases del 22/09/2026 (C2 3.3)
+    - {clase: 0,  descripcion: "NO DATA / FUERA DEL AREA",               meta: no_habitable}
+    - {clase: 1,  descripcion: "Bosques",                                 meta: no_urbano}
+    - {clase: 2,  descripcion: "Silvicultura",                            meta: no_urbano}
+    - {clase: 3,  descripcion: "Arbustales",                              meta: no_urbano}
+    - {clase: 4,  descripcion: "Mosaicos de arbustos y herbáceas",        meta: no_urbano}
+    - {clase: 5,  descripcion: "Herbáceas",                               meta: no_urbano}
+    - {clase: 6,  descripcion: "Cultivos y pasturas",                     meta: no_urbano}
+    - {clase: 7,  descripcion: "Humedales",                               meta: no_urbano}     # criterio acordado
+    - {clase: 8,  descripcion: "Áreas Urbanas",                           meta: urbano}
+    - {clase: 9,  descripcion: "Hielo en superficie y nieve permanente",  meta: no_habitable}
+    - {clase: 10, descripcion: "Otras áreas no vegetadas",                meta: no_habitable}
+    - {clase: 11, descripcion: "Ríos, lagunas, lagos y océano",           meta: no_habitable}
+    - {clase: 12, descripcion: "No observado",                            meta: no_habitable}
+
+dasimetria:
+  campo_ambito: ambito        # tipo de radio del censo: Urbano, Mixto, Rural
+  ambitos: [Urbano, Mixto, Rural]
+  ponderadores:
+    normalizar_por: Urbano    # C2 4.2: mediana del ámbito / mediana urbana
+    peso_urbano: complemento  # C2 4.2: píxel urbano = 1 − r en radios mixtos y rurales
+  producto_poblacion: poblacion_dasimetrica
+  variables:                  # C2 7.1 y 7.8: población del píxel × (variable / población del radio)
+    - {producto: nbi,                 numerador: nbi_total}
+    - {producto: agua_red,            numerador: agua_red_total}
+    - {producto: pobla_mujer,         numerador: pobla_mujer}
+    - {producto: pobla_varon,         numerador: pobla_varon}
+    - {producto: pobla_total_urbana,  numerador: pobla_total_urbana}
+    - {producto: pobla_total_rural,   numerador: pobla_total_rural}
+    - {producto: pobla_mujer_urbana,  numerador: pobla_mujer_urbana}
+    - {producto: pobla_mujer_rural,   numerador: pobla_mujer_rural}
+    - {producto: pobla_varon_urbano,  numerador: pobla_varon_urbano}
+    - {producto: pobla_varon_rural,   numerador: pobla_varon_rural}
+    - {producto: agua_red_mujer,      numerador: agua_red_mujer}
+    - {producto: agua_red_varon,      numerador: agua_red_varon}
+    - {producto: agua_red_urbana,     numerador: agua_red_urbana}
+    - {producto: agua_red_rural,      numerador: agua_red_rural}
+    - {producto: nbi_mujer,           numerador: nbi_mujer}
+    - {producto: nbi_varon,           numerador: nbi_varon}
+    - {producto: nbi_urbana,          numerador: nbi_urbana}
+    - {producto: nbi_rural,           numerador: nbi_rural}
+
+rendimiento:
+  filas_por_bloque: 512       # no cambia resultados
 
 referencia:
   poblacion_integrada: 45618784   # pipeline.log de la ejecución final
@@ -38,8 +92,14 @@ referencia:
 controles:
   modo: detener               # detener | advertir
   tolerancia_personas: 0
+  tolerancia_conservacion_pct: 0.001
+  tolerancia_radio_personas: 0.5
   consistencia_bloqueante: true
 
 resultados_esperados:         # no bloqueante: verifica la reproducción de la ejecución del 22/09/2026
   radios:
     total: 66421
+  grilla:
+    ancho: 21003                 # C5: grilla 5347 del C2 final
+    alto: 47151
+  poblacion_raster: 45618783.995  # suma de poblacion_dasimetrica_2022.tif reproducido el 26/10/2026

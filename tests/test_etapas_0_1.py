@@ -19,6 +19,7 @@ from poblar.config import ErrorConfig
 from poblar.trazabilidad import ControlFallido
 
 X0, Y0 = 4_500_000, 6_000_000  # coordenadas plausibles en EPSG:5347
+ETAPAS_01 = ["insumos", "radios"]
 FUERA = "Fuera de Región (Antártida/Islas)"
 
 
@@ -102,7 +103,7 @@ def _config(tmp_path: Path, **cambios) -> Path:
 
 
 def test_union_inner_regiones_y_orden(tmp_path: Path, insumos: Path) -> None:
-    c = ejecutar(_config(tmp_path), insumos=insumos, salida=tmp_path / "ejecuciones")
+    c = ejecutar(_config(tmp_path), insumos=insumos, salida=tmp_path / "ejecuciones", etapas=ETAPAS_01)
     r = gpd.read_parquet(c.carpeta / "1_radios" / "radios.parquet").set_index("id_radio")
 
     assert len(r) == 4                                  # 105 (solo mapa) y 199 (solo tabla) quedan afuera
@@ -123,7 +124,7 @@ def test_union_inner_regiones_y_orden(tmp_path: Path, insumos: Path) -> None:
 
 def test_union_left_desde_mapa_conserva_radios_sin_dato(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"radios.union": "left", "radios.id_desde": "mapa"})
-    c = ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
+    c = ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones", etapas=ETAPAS_01)
     r = gpd.read_parquet(c.carpeta / "1_radios" / "radios.parquet").set_index("id_radio")
     assert len(r) == 5
     assert r.loc["020010105", "pobla_total"] == 0
@@ -131,7 +132,7 @@ def test_union_left_desde_mapa_conserva_radios_sin_dato(tmp_path: Path, insumos:
 
 def test_excluir_fuera_de_region(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"region.excluir_fuera": True, "referencia.poblacion_integrada": 160})
-    c = ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
+    c = ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones", etapas=ETAPAS_01)
     r = gpd.read_parquet(c.carpeta / "1_radios" / "radios.parquet")
     assert FUERA not in set(r["Reg_PRAIS"])
     assert r["pobla_total"].sum() == 160
@@ -140,11 +141,11 @@ def test_excluir_fuera_de_region(tmp_path: Path, insumos: Path) -> None:
 def test_referencia_distinta_corta(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"referencia.poblacion_integrada": 999})
     with pytest.raises(ControlFallido) as e:
-        ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
+        ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones", etapas=ETAPAS_01)
     assert (e.value.carpeta / "controles.csv").exists()
 
 
 def test_falta_criterio_no_arranca(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"region.umbral_vecino_km": None})
     with pytest.raises(ErrorConfig):
-        ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
+        ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones", etapas=ETAPAS_01)
