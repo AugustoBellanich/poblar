@@ -1,0 +1,45 @@
+# PRAIS 2026 — OE2 — censo 2022
+# Reproduce la corrida final del 22/09/2026 (la que alimenta tablas y plataforma).
+# Cada criterio indica de dónde sale. Ver aplicaciones/prais2026/README.md.
+
+corrida: prais2026_2022
+anio_censo: 2022
+
+insumos:                      # rutas relativas a la carpeta de insumos (argumento insumos=)
+  tabla_censo:
+    ruta: tabla_censo2022.xlsx  # export Redatam (C0), 15/05/2026
+    sha256: null              # completar con el de la corrida de referencia
+  radios:
+    ruta: radios_2022.zip       # CONICET RI 11336/149711, RADIOS_2022_V2025-1
+    sha256: null
+  regiones:
+    ruta: regiones_PRAIS.gpkg
+    sha256: null
+
+radios:
+  campo_codigo_mapa: COD_2022   # código de radio en la cartografía CONICET
+  union: inner                # C1 de junio: solo radios con tabla y mapa (el 25/10 se probó 'left')
+  id_desde: tabla
+  orden: area_desc            # C2 2.5: área descendente (sin desempate, como el original)
+  exportar_gpkg: false
+
+region:
+  campo: Reg_PRAIS
+  umbral_huerfanos_km: 50     # C2 1.4, UMBRAL_DISTANCIA = 50000
+  etiqueta_fuera: "Fuera de Región (Antártida/Islas)"
+  excluir_fuera: false        # PRAIS 2026 los mantuvo; propuesto: true
+
+grilla_trabajo:
+  crs: 5347                   # POSGAR 2007 / Argentina 4 (C2 1.1)
+
+referencia:
+  poblacion_integrada: 45618784   # pipeline.log de la corrida final
+
+validaciones:
+  modo: cortar
+  tolerancia_personas: 0
+  consistencia_bloqueante: true
+
+aceptacion:                   # no bloquea: sirve para confirmar que se reprodujo el PRAIS 2026
+  radios:
+    total: 66421

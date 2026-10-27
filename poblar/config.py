@@ -1,0 +1,114 @@
+"""Lectura y validación del archivo de configuración de una corrida.
+
+Todo lo que cambia un resultado tiene que estar en el config. Si falta un
+criterio obligatorio, la corrida no arranca: no hay valores escondidos en el
+código.
+"""
+
+from __future__ import annotations
+
+import copy
+import logging
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+log = logging.getLogger(__name__)
+
+# Claves que tienen que existir para cada etapa. Se verifican antes de correr.
+OBLIGATORIAS: dict[str, list[str]] = {
+    "general": ["corrida", "anio_censo"],
+    "insumos": ["insumos.tabla_censo.ruta", "insumos.radios.ruta", "insumos.regiones.ruta"],
+    "radios": [
+        "radios.campo_codigo_mapa",
+        "radios.union",
+        "radios.id_desde",
+        "region.campo",
+        "region.umbral_huerfanos_km",
+        "region.etiqueta_fuera",
+        "region.excluir_fuera",
+        "grilla_trabajo.crs",
+    ],
+}
+
+VALORES_PERMITIDOS: dict[str, set[Any]] = {
+    "radios.union": {"inner", "left"},
+    "radios.id_desde": {"tabla", "mapa"},
+    "radios.orden": {"area_desc", "area_desc_estable"},
+    "validaciones.modo": {"cortar", "avisar"},
+}
+
+
+class ErrorConfig(ValueError):
+    """El config no tiene lo necesario para correr."""
+
+
+def obtener(cfg: dict[str, Any], clave: str, defecto: Any = ...) -> Any:
+    """Devuelve ``cfg["a"]["b"]`` a partir de ``"a.b"``.
+
+    Args:
+        cfg: Config ya leído.
+        clave: Ruta separada por puntos.
+        defecto: Valor si la clave no existe. Si se omite, falta = error.
+
+    Raises:
+        ErrorConfig: Si la clave no existe y no se dio un valor por defecto.
+    """
+    nodo: Any = cfg
+    for parte in clave.split("."):
+        if not isinstance(nodo, dict) or parte not in nodo:
+            if defecto is ...:
+                raise ErrorConfig(f"Falta '{clave}' en el config.")
+            return defecto
+        nodo = nodo[parte]
+    return nodo
+
+
+def cargar(ruta: str | Path, insumos: str | Path | None = None) -> dict[str, Any]:
+    """Lee el YAML, resuelve rutas de insumos y verifica claves obligatorias.
+
+    Args:
+        ruta: Archivo de configuración.
+        insumos: Carpeta base de los insumos. Las rutas relativas del config se
+            resuelven contra ella (si no se da, contra la carpeta del config).
+
+    Returns:
+        Diccionario de configuración con ``_meta`` (ruta del config y base).
+    """
+    ruta = Path(ruta)
+    with ruta.open(encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+
+    base = Path(insumos) if insumos else ruta.parent
+    cfg = copy.deepcopy(cfg)
+    for ins in (cfg.get("insumos") or {}).values():
+        if isinstance(ins, dict) and ins.get("ruta"):
+            p = Path(ins["ruta"])
+            ins["ruta"] = str(p if p.is_absolute() else (base / p))
+    cfg["_meta"] = {"config": str(ruta.resolve()), "base_insumos": str(base)}
+
+    verificar(cfg)
+    return cfg
+
+
+def verificar(cfg: dict[str, Any], etapas: list[str] | None = None) -> None:
+    """Verifica que estén todas las claves obligatorias y con valores válidos.
+
+    Raises:
+        ErrorConfig: Con la lista completa de lo que falta, no solo lo primero.
+    """
+    grupos = ["general", "insumos"] + (etapas or ["radios"])
+    faltan = [c for g in grupos for c in OBLIGATORIAS.get(g, []) if obtener(cfg, c, None) is None]
+    invalidos = []
+    for clave, permitidos in VALORES_PERMITIDOS.items():
+        valor = obtener(cfg, clave, None)
+        if valor is not None and valor not in permitidos:
+            invalidos.append(f"{clave}={valor!r} (permitidos: {sorted(permitidos)})")
+    if faltan or invalidos:
+        partes = []
+        if faltan:
+            partes.append("faltan: " + ", ".join(faltan))
+        if invalidos:
+            partes.append("valores inválidos: " + ", ".join(invalidos))
+        raise ErrorConfig("El config no está completo — " + "; ".join(partes))

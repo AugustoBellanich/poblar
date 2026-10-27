@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "poblar"
+version = "0.1.0"
+description = "Distribución de datos censales en una grilla (mapeo dasimétrico) y cruce con capas temáticas, con trazabilidad completa."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "geopandas>=0.14",
+  "shapely>=2.0",
+  "pyproj>=3.6",
+  "pyogrio>=0.7",
+  "rasterio>=1.3",
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "pyarrow>=14",
+  "openpyxl>=3.1",
+  "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.4"]
+
+[tool.setuptools.packages.find]
+include = ["poblar*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110

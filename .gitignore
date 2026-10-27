@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# datos y corridas: nunca al repo (van en Drive; acá solo configs, hashes y enlaces)
+corridas/
+insumos/
+*.tif
+*.tiff
+*.gpkg
+*.parquet
+*.zip
+*.xlsx
+*.shp
+*.dbf
+*.shx
+*.prj
+*.cpg
+!tests/**

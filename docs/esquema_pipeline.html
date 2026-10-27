@@ -1,0 +1,419 @@
+<title>Pipeline OE2 PRAIS</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: hoja técnica de una columna; flujo de etapas como "ficha" con columnas entra/hace/sale/verifica; tablas con scroll propio */
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --ink:#17232b; --muted:#56646c; --line:#d5dddb;
+  --accent:#0f6b63; --accent-soft:#e1efec;
+  --ok:#1f7a3f; --ok-soft:#e3f3e8; --warn:#9a6200; --warn-soft:#fbf0d9; --cut:#8a3b2e; --cut-soft:#f8e6e2; --info:#2f5d8a; --info-soft:#e4edf6;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10181c; --surface:#172227; --ink:#e3ebe9; --muted:#9aaab0; --line:#2b3a40;
+  --accent:#5cc4b8; --accent-soft:#16312f;
+  --ok:#6fd08e; --ok-soft:#173022; --warn:#e6b45a; --warn-soft:#352812; --cut:#f0907e; --cut-soft:#3a1d18; --info:#8db8e3; --info-soft:#18283a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10181c; --surface:#172227; --ink:#e3ebe9; --muted:#9aaab0; --line:#2b3a40;
+  --accent:#5cc4b8; --accent-soft:#16312f;
+  --ok:#6fd08e; --ok-soft:#173022; --warn:#e6b45a; --warn-soft:#352812; --cut:#f0907e; --cut-soft:#3a1d18; --info:#8db8e3; --info-soft:#18283a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.45rem;font-weight:600;padding-bottom:8px;border-bottom:2px solid var(--ink)}
+h3{font-size:1.1rem;font-weight:600}
+p{margin:0;max-width:72ch}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+header{display:flex;flex-direction:column;gap:10px}
+.lead{font-size:1.06rem;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:16px}
+.muted{color:var(--muted)}
+.inf{font-style:italic;color:var(--warn)}
+/* principios */
+.princ{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.princ div{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.princ b{font-family:var(--f-display);font-size:1.02rem}
+.princ span{color:var(--muted);font-size:.92rem}
+/* flujo */
+.flow{display:flex;flex-direction:column;gap:0}
+.stage{display:grid;grid-template-columns:64px 1fr;gap:0 16px;position:relative}
+.stage .rail{display:flex;flex-direction:column;align-items:center}
+.stage .num{font-family:var(--f-mono);font-weight:500;width:48px;height:48px;border-radius:50%;border:2px solid var(--accent);display:grid;place-items:center;background:var(--surface);color:var(--accent);font-size:.95rem;flex:none}
+.stage .rail::after{content:"";flex:1;width:2px;background:var(--line);margin:4px 0}
+.stage:last-child .rail::after{display:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px;margin-bottom:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.card .from{font-family:var(--f-mono);font-size:.76rem;color:var(--muted)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grid4>div{min-width:0;display:flex;flex-direction:column;gap:4px}
+.lbl{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+li{font-size:.93rem}
+.chk li::marker{content:"✓ ";color:var(--ok)}
+.gate{background:var(--ok-soft);border-radius:4px;padding:10px 12px}
+.gate .lbl{color:var(--ok)}
+.dec{background:var(--warn-soft);border-radius:4px;padding:10px 12px}
+.dec .lbl{color:var(--warn)}
+.out{background:var(--info-soft);border-radius:4px;padding:10px 12px}
+.out .lbl{color:var(--info)}
+/* pills */
+.pill{display:inline-block;font-family:var(--f-mono);font-size:.72rem;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.p-keep{background:var(--ok-soft);color:var(--ok)}
+.p-an{background:var(--info-soft);color:var(--info)}
+.p-cut{background:var(--cut-soft);color:var(--cut)}
+.p-dec{background:var(--warn-soft);color:var(--warn)}
+.p-opt{background:var(--accent-soft);color:var(--accent)}
+/* tablas */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:720px;font-size:.9rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td.c{white-space:nowrap;font-family:var(--f-mono);font-size:.82rem}
+/* código */
+pre{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:.82rem;line-height:1.5}
+.cm{color:var(--muted)}
+.k{color:var(--accent)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+.two>div{min-width:0;display:flex;flex-direction:column;gap:8px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:.85rem;color:var(--muted)}
+.note{border-left:3px solid var(--warn);padding:6px 0 6px 14px;color:var(--muted);font-size:.92rem}
+footer{font-size:.82rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:520px){h1{font-size:1.6rem}.stage{grid-template-columns:40px 1fr;gap:0 10px}.stage .num{width:36px;height:36px;font-size:.8rem}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">Propuesta para revisar · versión 4 · 26/10/2026 · Augusto Bellanich</span>
+  <h1>Pipeline OE2 PRAIS: esquema unificado</h1>
+  <p class="lead">Cómo pasar de cinco cuadernos a un solo proceso configurable: se eligen los insumos y los criterios en un archivo, se corre, y sale todo lo pedido con su registro de trazabilidad. El esquema sale de revisar celda por celda C0, C1, C2 (versión final 2010), C3, C4 y C5.</p>
+  <div class="legend">
+    <span><span class="pill p-keep">queda</span> entra al pipeline</span>
+    <span><span class="pill p-opt">opcional</span> producto que se pide en el config</span>
+    <span><span class="pill p-an">análisis</span> pasa al cuaderno de análisis</span>
+    <span><span class="pill p-cut">se elimina</span> no aporta a ningún producto</span>
+    <span><span class="pill p-dec">a confirmar</span> propuesta que revisa el grupo</span>
+  </div>
+</header>
+
+<section>
+  <h2>Qué encontró el inventario</h2>
+  <p>Estos hallazgos explican por qué conviene rediseñar y no solo pegar las celdas. Cada uno tiene su lugar en el código.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Hallazgo</th><th>Dónde</th><th>Qué provocó</th><th>Cómo lo resuelve el esquema</th></tr></thead>
+    <tbody>
+      <tr><td>El criterio de clases del MapBiomas se elige <b>con desplegables</b>. El valor por defecto de Humedales es "No Habitable"; el "No Urbano" de la corrida final se eligió a mano.</td><td class="c">C2 · 3.3</td><td>La corrida 2010 del informe salió con otro criterio que la final y nada lo registró (L3).</td><td>Tabla de clases en el config. Si el raster tiene una clase que no está en la tabla, la corrida se frena.</td></tr>
+      <tr><td>La resolución de la grilla 5347 la <b>estima GDAL</b> a partir de la extensión de los radios.</td><td class="c">C2 · 3.1</td><td>80,93 m en 2010 y 78,48 m en 2022; la grilla 2010 llega hasta la Antártida (92.392 filas).</td><td>Grilla de trabajo fija en el config: CRS, resolución y extensión.</td></tr>
+      <tr><td>La limpieza de geometrías, la reproyección a 5347 y los indicadores del C1 <b>no llegan al producto</b>: el <code>prais_final</code> se arma desde la capa cruda.</td><td class="c">C1 · 61–81 vs 153</td><td>Pasos que parecen aplicados y no lo están. El C2 los vuelve a hacer.</td><td>Un solo lugar para cada operación.</td></tr>
+      <tr><td>Dos métodos distintos para asignar región: <code>sjoin intersects</code> en C1 y área mayor + vecino a 50 km en C2.</td><td class="c">C1 · 281 · C2 · 1.4</td><td>497 filas duplicadas en el C1 (L4); la región del C1 no se usa.</td><td>Queda solo el de C2, con el umbral en el config.</td></tr>
+      <tr><td>El cruce con DT se hace <b>dos veces en grillas distintas</b>: C3 trae la DT a 5347 (vecino) y C4 lleva la población a la grilla de la DT (suma).</td><td class="c">C3 · 4 · C4 · 4.1</td><td>Dos cifras para lo mismo: 5.665.133 (tablas) y 5.671.546 (rasters) en 2022.</td><td>Un solo cruce, en la grilla de trabajo, del que salen las tablas y los rasters.</td></tr>
+      <tr><td>Los archivos se buscan por patrones de nombre en <code>/content</code>.</td><td class="c">C3 · 3 · C5 · 34</td><td><code>OE14_</code>, <code>MB_prais_2023</code> vs <code>mapbiomas_prais_2023</code>, <code>*_pct_*</code> reproyectados con suma, <code>_WGS84_WGS84</code>.</td><td>Rutas explícitas en el config y nombres de producto fijos.</td></tr>
+      <tr><td>Cada etapa tiene su propia tolerancia y casi todas solo avisan.</td><td class="c">C2 5.5 · C4 5.1 · C5</td><td>0,1 % (C2), 0,05 % (C4), 0,001 % (C5); "ERROR" y la corrida sigue.</td><td>Validaciones únicas, con tolerancia en el config, que cortan la corrida.</td></tr>
+      <tr><td>Los porcentajes de las tablas se calculan fuera del pipeline, a mano en planillas.</td><td class="c">Tablas 6 y 10</td><td>La Tabla 6 2022 mezcla dos fórmulas; la Tabla 10 no usa la métrica de la CNULD para el sexo.</td><td>Las tablas del informe salen del pipeline con la fórmula escrita en el config.</td></tr>
+      <tr><td>Los cuadernos se guardan con la salida de otra corrida u otro año.</td><td class="c">C2 OE 2 · C4 2010</td><td>No se sabía qué cuaderno produjo qué archivo.</td><td>Cada corrida guarda su config, su log y su manifiesto.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Principios</h2>
+  <div class="princ">
+    <div><b>Un config por corrida</b><span>Insumos, criterios, grilla, tolerancias y productos en un archivo de texto legible.</span></div>
+    <div><b>Una grilla, un cruce</b><span>La población y la DT se cruzan una sola vez; tablas y rasters salen de ahí y coinciden por construcción.</span></div>
+    <div><b>Validaciones que cortan</b><span>Si un invariante falla (conservación, sexo, ámbito, agua), la corrida se frena y dice dónde.</span></div>
+    <div><b>Todo con huella</b><span>sha256 de cada insumo y producto, versión del código y log en la carpeta de la corrida.</span></div>
+    <div><b>Retomable</b><span>Cada etapa saltea lo que ya hizo si sus entradas y parámetros no cambiaron. Sirve para las sesiones cortas de Colab.</span></div>
+    <div><b>Análisis aparte</b><span>Gráficos, mapas y exploración van a otro cuaderno que lee una corrida y no produce nada.</span></div>
+  </div>
+</section>
+
+<section id="criterios">
+  <h2>Criterios: se fijan antes de correr</h2>
+  <p>Todo lo que cambia un resultado va en el bloque <code>criterios</code> del config, con la fuente de la decisión. El pipeline no ofrece desplegables: si un criterio falta, no arranca. Abajo, el valor que propongo y por qué; los marcados <span class="pill p-dec">a confirmar</span> los revisan ustedes.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Criterio</th><th>PRAIS 2026</th><th>Propuesta</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td>Clases del MapBiomas</td><td>Desplegables; Humedales "No Urbano" elegido a mano en la corrida final</td><td>Tabla fija en el config: Humedales (7) no urbano, otras áreas no vegetadas (10) no habitable, resto como el <code>mapeo_clases</code> del 22/09</td><td>Es el criterio acordado. Escrito, no se puede colar otro sin que quede registrado.</td></tr>
+      <tr><td>Grilla de trabajo</td><td>EPSG:5347; la resolución la estima GDAL desde la extensión de los radios (80,93 m en 2010, 78,48 m en 2022)</td><td><b>Fija: 5347, 80 m, extensión de las regiones PRAIS</b>, origen alineado a múltiplos de 80 <span class="pill p-keep">acordado 26/10</span></td><td>Respeta la intención original (no degradar el detalle del MapBiomas: GDAL eligió ~80 m por eso), pero deja de depender de la extensión. Así 2010 y 2022 se calculan en la misma grilla, que es lo que necesita una tendencia. Al terminar la migración se mide una vez cuánto cambian las cifras respecto del PRAIS 2026. El config <code>prais2026.yaml</code> conserva el modo original para reproducir lo publicado.</td></tr>
+      <tr><td>Grilla del cruce oficial</td><td>C3 en 5347 (tablas) y C4 en la grilla de la DT (rasters): 5.665.133 y 5.671.546</td><td><b>En la grilla de trabajo (método del C3)</b>; los rasters en TD salen del mismo cruce</td><td>La población se cuenta donde se calculó, sin remuestrear: conservación exacta. La DT es categórica y pasa con vecino más cercano sin perder sentido. Verificado: la DT está en 0,001° (19.930 × 33.284) y el MapBiomas en 0,000898° (22.186 × 37.051); no comparten grilla, así que cruzar en la del MapBiomas no unifica nada.</td></tr>
+      <tr><td>Grilla de publicación</td><td>Población en la grilla MapBiomas (C5); capas en TD en la grilla de la DT (C4) <span class="inf">(inferido por el tamaño de los archivos)</span></td><td><b>Una sola para todas las capas: la grilla del MapBiomas</b>, como el C5. Parámetro del config: <code>grilla_publicacion: mapbiomas</code> (o <code>degradacion</code>) <span class="pill p-dec">a confirmar</span></td><td>Es el cambio mínimo: las capas de población ya cargadas quedan igual (se verificó que coinciden con la reproducción) y solo se regeneran las capas en TD, desde el cruce oficial. La grilla del MapBiomas es la misma en 2015 y 2023 (22.186 × 37.051, mismos límites), así que 2010 y 2022 publican en la misma. Es la misma función del C5 con otro raster de referencia; si más adelante prefieren alinear con el mapa de DT, se cambia el parámetro.</td></tr>
+      <tr><td>Ámbito de reporte</td><td>Mixto → Rural (C3 8.5)</td><td>Igual</td><td>Criterio del equipo; queda en el config.</td></tr>
+      <tr><td>Región de cada radio</td><td>Área mayor; huérfanos al vecino a 50 km (C2 1.4)</td><td>Igual, umbral en el config</td><td>Es el método que efectivamente usó el producto.</td></tr>
+      <tr><td>Antártida, islas y Malvinas</td><td>"Fuera de región"; ~177 personas 2010 se pierden al pasar a WGS84</td><td><b>Excluir</b> de la grilla y reportar cuántos radios y personas quedan afuera</td><td>Decisión de ustedes. El "Total país" sigue siendo el total censal; la diferencia se informa en una línea.</td></tr>
+      <tr><td>Productos opcionales</td><td>Densidad y % por radio se generan siempre</td><td><b>No se generan</b> salvo que se pidan</td><td>El inventario no encontró ningún uso en el informe ni en la plataforma.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Denominadores de los porcentajes</h3>
+  <p>Propuesta según el manual de reporte PRAIS 2026 de la CNULD y lo que ya hace bien el informe:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Indicador</th><th>Qué dice la CNULD</th><th>Fórmula propuesta (cada fila: total, urbana, rural, mujeres, varones)</th><th>Qué hizo el informe</th></tr></thead>
+    <tbody>
+      <tr><td>OE2-1 NBI</td><td>Porcentaje de la población por debajo de la línea de pobreza (en zonas afectadas)</td><td><b>NBI en TD ÷ población en TD</b>, del mismo grupo</td><td>Tabla 6: 2010 usa esta fórmula en todas las filas. <b>2022 la usa solo en el total</b> (12,6 %); urbana, rural, mujeres y varones dividen por el NBI del país (15,5 · 25,5 · 16,5 · 16,7)</td></tr>
+      <tr><td>OE2-2 Agua</td><td>Proporción de la población que usa agua de red (% de la población; urbana y rural)</td><td><b>Con agua de red en TD ÷ población en TD</b>, del mismo grupo</td><td>Tabla 8: correcto y consistente en los dos años</td></tr>
+      <tr><td>OE2-3 Exposición</td><td>Población expuesta de cada sexo ÷ población total de ese sexo × 100</td><td><b>Población en TD del grupo ÷ población del país del grupo</b></td><td>Tabla 10: el total está bien (9,5 · 12,4); mujeres y varones muestran la composición dentro de TD (49,9 · 50,8), no la métrica de la CNULD (9,2 · 12,2 mujeres; 9,8 · 12,7 varones)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Consecuencia para el panel: con la fórmula consistente, la incidencia de NBI en la población rural en TD <b>baja</b> de 22,3 % (2010) a 14,3 % (2022). El informe dice que "aumentó del 22,4 % al 25,5 %" porque compara dos fórmulas distintas. Mismo caso en mujeres (18,0 → 12,5, no 18,1 → 16,5). Cifras recalculadas con las tablas del C3 final (2010 corregido) y los totales del C1. Las otras fórmulas (qué parte del NBI del país vive en TD; composición por sexo dentro de TD) pueden seguir, como columnas aparte y con su nombre.</p>
+</section>
+
+<section>
+  <h2>El flujo: seis etapas</h2>
+  <p>No son los cinco cuadernos renumerados. Están cortadas donde cambia el tipo de dato: tabla, vector, raster en la grilla de trabajo, cruce y publicación. En gris, de qué celdas actuales sale cada pieza.</p>
+
+  <div class="flow">
+
+    <div class="stage"><div class="rail"><div class="num">0</div></div>
+      <div class="card">
+        <div class="head"><h3>Registro de insumos</h3><span class="from">nuevo · reemplaza C2 1.2–1.3 y C5 diagnóstico</span></div>
+        <div class="grid4">
+          <div><span class="lbl">Entra</span><ul><li>config de la corrida</li><li>rutas o enlaces de cada insumo</li></ul></div>
+          <div><span class="lbl">Hace</span><ul><li>Calcula sha256 y lee metadatos (CRS, grilla, clases, columnas)</li><li>Compara con lo declarado en el config</li></ul></div>
+          <div class="out"><span class="lbl">Sale</span><ul><li><code>insumos.csv</code> (hash y metadatos)</li></ul></div>
+          <div class="gate"><span class="lbl">Corta si</span><ul class="chk"><li>un hash no coincide con el declarado</li><li>el raster tiene clases sin mapear</li><li>la capa DT tiene códigos fuera del codebook</li><li>un gpkg se lee vacío (caso <code>gpkg_ogr_contents</code>)</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage"><div class="rail"><div class="num">1</div></div>
+      <div class="card">
+        <div class="head"><h3>Base de radios</h3><span class="from">C0 3.2, 5.1 · C1 4, 6, 117, 125–155 · C2 1.4, 2.1–2.5</span></div>
+        <div class="grid4">
+          <div><span class="lbl">Entra</span><ul><li>tabla censal (export Redatam)</li><li>cartografía de radios (CONICET)</li><li>regiones PRAIS</li></ul></div>
+          <div><span class="lbl">Hace</span><ul><li>Lleva la tabla a un esquema estándar (<code>id_radio</code> de 9 dígitos, variables de conteo)</li><li>Une tabla y mapa por <code>id_radio</code></li><li>Corrige geometrías y pasa a la grilla de trabajo</li><li>Descarta filas sin <code>id_radio</code> y deduplica, registrando cuántas</li><li>Asigna región por área mayor; huérfanos al vecino a menos de X km; el resto "fuera de región"</li></ul></div>
+          <div class="out"><span class="lbl">Sale</span><ul><li><code>radios.parquet</code></li><li><code>radios_sin_cartografia.csv</code></li><li><code>radios_fuera_region.csv</code></li><li><span class="pill p-opt">opcional</span> <code>radios.gpkg</code> para QGIS</li></ul></div>
+          <div class="gate"><span class="lbl">Corta si</span><ul class="chk"><li>mujeres + varones ≠ total (por radio)</li><li>urbana + rural ≠ total</li><li>agua de red o NBI &gt; total</li><li>total nacional ≠ referencia INDEC del config</li><li>queda un <code>id_radio</code> repetido</li></ul><span class="muted" style="font-size:.85rem">Informa: cobertura tabla↔mapa y población sin cartografía (L5).</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage"><div class="rail"><div class="num">2</div></div>
+      <div class="card">
+        <div class="head"><h3>Grilla de trabajo y cobertura</h3><span class="from">C2 3.1–3.4</span></div>
+        <div class="grid4">
+          <div><span class="lbl">Entra</span><ul><li>MapBiomas del año</li><li>tabla de clases del config</li><li>grilla de trabajo del config</li></ul></div>
+          <div><span class="lbl">Hace</span><ul><li>Lleva el MapBiomas a la grilla (vecino más cercano)</li><li>Reclasifica a 0 no habitable, 1 urbano, 2 no urbano</li></ul></div>
+          <div class="out"><span class="lbl">Sale</span><ul><li><code>cobertura.tif</code></li><li><code>clases_aplicadas.csv</code></li></ul></div>
+          <div class="gate"><span class="lbl">Corta si</span><ul class="chk"><li>alguna clase presente no está en la tabla</li><li>el área por clase cambia más de X % respecto del original</li></ul></div>
+        </div>
+        <div class="dec"><span class="lbl">Criterio</span><p style="font-size:.92rem">Grilla fija de 80 m en 5347 con la extensión de las regiones PRAIS (ver <a href="#criterios">criterios</a>). Antártida e islas quedan afuera. Para reproducir el PRAIS 2026 está el modo de compatibilidad.</p></div>
+      </div>
+    </div>
+
+    <div class="stage"><div class="rail"><div class="num">3</div></div>
+      <div class="card">
+        <div class="head"><h3>Mapeo dasimétrico</h3><span class="from">C2 4.1–4.4, 5.1–5.5, 7.1–7.2</span></div>
+        <div class="grid4">
+          <div><span class="lbl">Entra</span><ul><li><code>radios.parquet</code></li><li><code>cobertura.tif</code></li></ul></div>
+          <div><span class="lbl">Hace</span><ul><li>Raster de IDs de radio (ALL_TOUCHED)</li><li>Composición de píxeles por radio</li><li>Matriz de ponderadores: mediana de densidad por región × ámbito, normalizada por urbano</li><li>Raster de pesos, factor dasimétrico y contingencias de nivel 2 y 3</li><li><b>En una sola pasada por bloque</b>: población total y todas las variables pedidas (sexo, ámbito, cruces, NBI, agua)</li></ul></div>
+          <div class="out"><span class="lbl">Sale</span><ul><li>rasters de conteo, uno por variable</li><li><code>raster_ids.tif</code>, <code>pesos.tif</code></li><li><code>ponderadores.csv</code>, <code>contingencias.csv</code></li><li><span class="pill p-opt">opcional</span> densidad y % por radio</li></ul></div>
+          <div class="gate"><span class="lbl">Corta si</span><ul class="chk"><li><b>conservación por radio</b>: suma del raster en cada radio = censo (hoy solo se mira el total nacional)</li><li>mujeres + varones = total en cada píxel</li><li>urbana + rural = total</li><li>valores negativos, NaN o infinitos</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage"><div class="rail"><div class="num">4</div></div>
+      <div class="card">
+        <div class="head"><h3>Cruce con degradación de tierras</h3><span class="from">C3 4–14 · C4 4.1–5.1</span></div>
+        <div class="grid4">
+          <div><span class="lbl">Entra</span><ul><li>rasters de conteo</li><li>capa de DT y su codebook</li><li>regiones × ámbito (Mixto → Rural, en el config)</li></ul></div>
+          <div><span class="lbl">Hace</span><ul><li>Lleva la DT a la grilla (vecino más cercano)</li><li>Acumula por región × ámbito × categoría (bincount por bloques)</li><li>Escribe en la misma pasada los rasters "población en TD"</li><li>Deriva agua sin red = total − con red</li></ul></div>
+          <div class="out"><span class="lbl">Sale</span><ul><li><code>exposicion_largo.csv</code>, <code>exposicion_ancho.csv</code></li><li><code>indicadores_pct.csv</code></li><li>rasters <code>*_degradada.tif</code></li></ul></div>
+          <div class="gate"><span class="lbl">Corta si</span><ul class="chk"><li>se pierde población en el cruce (chequeo 1 del C3)</li><li>los diez chequeos del C3 (sexo, agua, categorías al 100 %, % entre 0 y 100, negativos, ámbitos, NBI y agua por sexo)</li><li>la suma de los rasters en TD ≠ la tabla (deben ser idénticos)</li></ul></div>
+        </div>
+        <div class="dec"><span class="lbl">Criterio</span><p style="font-size:.92rem">El cruce se hace en la grilla de trabajo y los porcentajes usan los denominadores de la CNULD (ver <a href="#criterios">criterios</a>). Con un solo cruce desaparece la diferencia 5.665.133 / 5.671.546.</p></div>
+      </div>
+    </div>
+
+    <div class="stage"><div class="rail"><div class="num">5</div></div>
+      <div class="card">
+        <div class="head"><h3>Publicación</h3><span class="from">C5 32–34 · C3 11–12 · tablas del informe</span></div>
+        <div class="grid4">
+          <div><span class="lbl">Entra</span><ul><li>rasters de conteo y en TD</li><li>tablas del cruce</li><li>grilla de publicación (la del MapBiomas, 0,000898°, como el C5)</li></ul></div>
+          <div><span class="lbl">Hace</span><ul><li>Reproyecta solo variables de conteo con suma (<code>gdalwarp -r sum</code>, multihilo)</li><li>Nombra con la convención de la plataforma (<code>OE2-1…</code>, <code>OE2-2…</code>, <code>OE2-3…</code>)</li><li>Arma las tablas del informe (6 a 11) desde una sola fuente, incluido el "Total país"</li></ul></div>
+          <div class="out"><span class="lbl">Sale</span><ul><li>capas de la plataforma</li><li>tablas del informe en CSV UTF-8 y xlsx con números (no texto)</li></ul></div>
+          <div class="gate"><span class="lbl">Corta si</span><ul class="chk"><li>los 10 controles del C5 (masa, CRS, resolución, dimensiones, transform, extensión, NoData, negativos, NaN, máximo)</li><li>la población que queda fuera de la grilla supera X personas (hoy ~177 en 2010, extremo sur)</li></ul></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>Qué pasa con cada cuaderno</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Cuaderno</th><th>Queda en el pipeline</th><th>Va al cuaderno de análisis</th><th>Se elimina</th></tr></thead>
+    <tbody>
+      <tr><td class="c">C0 Redatam</td><td><span class="pill p-keep">queda</span> carga y unión con códigos (5.1, 6.1), QA de sexo y ámbito (3.2)</td><td><span class="pill p-an">análisis</span> cuadros 5.3/6.3, ranking provincial, correlaciones, visor de mapas (7)</td><td><span class="pill p-cut">se elimina</span> tasas % (4) si no se piden como producto</td></tr>
+      <tr><td class="c">C1 Geoespacial</td><td><span class="pill p-keep">queda</span> descarga de radios (4), normalización de <code>id_radio</code> (117), unión tabla↔mapa (153–155), lista de radios sin cartografía (147)</td><td><span class="pill p-an">análisis</span> etapa 4 (exploratorio nacional), etapa 5.4–5.7 (estadísticas regionales y gráficos)</td><td><span class="pill p-cut">se elimina</span> limpieza y 5347 de la etapa 1 (no llegan al producto), indicadores % de la etapa 3, <code>sjoin intersects</code> (281), exportaciones intermedias, zip y copia a Drive</td></tr>
+      <tr><td class="c">C2 Dasimétrico</td><td><span class="pill p-keep">queda</span> asignación regional (1.4), estandarización y deduplicación (2.2–2.5), MapBiomas (3.1, 3.4), todo el núcleo 4.1–5.5, rasters por tasa (7.1)</td><td><span class="pill p-an">análisis</span> visualizaciones 6.1–6.4, 7.3–7.4, 7.6–7.7, cazador de huecos (5.x) como diagnóstico</td><td><span class="pill p-cut">se elimina</span> configuración interactiva (1.2), <b>mapeo de clases con desplegables (3.3)</b>, auditorías de esquema 7.0–7.0.2, generador interactivo (7.8), empaquetado y descargas (8)</td></tr>
+      <tr><td class="c">C3 Cruce</td><td><span class="pill p-keep">queda</span> alineación de DT (4), codebook (5), zonas (6), motor zonal (7–8), Mixto → Rural (8.5), colapso binario y % (9–11), los diez chequeos (14)</td><td><span class="pill p-an">análisis</span> gráficos 1 a 5 (13–17)</td><td><span class="pill p-cut">se elimina</span> zip y descarga (12)</td></tr>
+      <tr><td class="c">C4 Rasters TD</td><td><span class="pill p-keep">queda</span> la escritura de rasters en TD, ahora dentro del mismo cruce; controles de 5.1</td><td><span class="pill p-an">análisis</span> mapa rápido (6.1)</td><td><span class="pill p-cut">se elimina</span> el segundo cruce en otra grilla, comparación con el C3 (5.2) porque pasa a ser un invariante</td></tr>
+      <tr><td class="c">C5 WGS84</td><td><span class="pill p-keep">queda</span> reproyección por suma a la grilla MapBiomas y los diez controles (34)</td><td><span class="pill p-an">análisis</span> diagnóstico de grillas (1–12)</td><td><span class="pill p-cut">se elimina</span> chequeo inverso (27), chequeo de NoData que carga 8 GB (30), celda 32 (duplica la 34), copia a <code>dasimetria_WGS84</code> (36)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>El config y la carpeta de una corrida</h2>
+  <div class="two">
+    <div>
+      <span class="lbl">configs/prais2026_2022.yaml (borrador)</span>
+<pre><span class="k">corrida</span>: 2022_reporte
+<span class="k">anio_censo</span>: 2022
+<span class="k">insumos</span>:
+  tabla_censo:  { ruta: insumos/tabla_censo2022.xlsx, sha256: "…" }
+  radios:       { url: "https://datosdeinvestigacion.conicet.gov.ar/…", sha256: "…" }
+  regiones:     { ruta: insumos/regiones_PRAIS.gpkg, sha256: "…" }
+  mapbiomas:    { ruta: insumos/MB_prais_2023_100m.tif, sha256: "…" }
+  degradacion:  { ruta: insumos/CondicionFinal_Estado_Reporte2_4326.tif, sha256: "…" }
+<span class="k">referencia</span>:
+  poblacion_total: 45618784        <span class="cm"># control contra INDEC</span>
+<span class="k">grilla_trabajo</span>: { crs: 5347, modo: gdal_auto, extension: radios }  <span class="cm"># prais2026; propuesto: resolucion_m: 80, extension: regiones</span>
+<span class="k">clases_mapbiomas</span>:                <span class="cm"># 0 no habitable · 1 urbano · 2 no urbano</span>
+  1: 2   2: 2   3: 2   4: 2   5: 2   6: 2
+  7: 2    <span class="cm"># Humedales: no urbano (criterio acordado)</span>
+  8: 1
+  9: 0   10: 0  11: 0  12: 0  0: 0
+<span class="k">region</span>: { metodo: area_mayor, umbral_huerfanos_km: 50 }
+<span class="k">ponderadores</span>: { estadistico: mediana, normalizar_por: urbano }
+<span class="k">degradacion_codebook</span>: { degradada: [1], no_degradada: [2, 3, 9], sin_dato: [0] }
+<span class="k">ambito_reporte</span>: { Mixto: Rural }
+<span class="k">tolerancias</span>: { conservacion_pct: 0.001, fuera_de_grilla_personas: 500 }
+<span class="k">productos</span>:
+  variables: [poblacion, mujer, varon, urbana, rural, nbi, agua_red, cruces_sexo_ambito]
+  tablas_informe: true
+  rasters_td: true
+  plataforma_wgs84: true
+  extras: [densidad]               <span class="cm"># opcional</span></pre>
+    </div>
+    <div>
+      <span class="lbl">corridas/2022_reporte/</span>
+<pre>config.yaml            <span class="cm"># copia exacta de lo que se corrió</span>
+entorno.txt            <span class="cm"># versión del código (commit) y librerías</span>
+insumos.csv            <span class="cm"># hash y metadatos de cada insumo</span>
+manifiesto.csv         <span class="cm"># hash, tamaño y suma de cada producto</span>
+validaciones.html      <span class="cm"># todos los chequeos, legible</span>
+pipeline.log
+1_radios/
+2_grilla/
+3_dasimetria/
+4_cruce_td/
+5_publicacion/
+  plataforma/          <span class="cm"># OE2-x…wgs84_2022.tif</span>
+  tablas_informe/      <span class="cm"># tabla_06.csv … tabla_11.csv, .xlsx</span></pre>
+      <p class="muted" style="font-size:.9rem">Quien quiera verificar una cifra abre <code>validaciones.html</code> y <code>manifiesto.csv</code>, ve qué insumos entraron y con qué criterios, y puede volver a correr el mismo config.</p>
+      <span class="lbl" style="margin-top:8px">Cómo se corre (Colab)</span>
+<pre>!pip install git+https://github.com/&lt;cuenta&gt;/prais-oe2
+from prais import correr
+correr("configs/2022_reporte.yaml", etapas="todas")</pre>
+    </div>
+  </div>
+</section>
+
+<section id="parametros">
+  <h2>Parámetros: configuración original y mejoras posibles</h2>
+  <p>El pipeline trae dos configs. <code>prais2026.yaml</code> reproduce exactamente lo que ya generamos (3.808.137 / 5.665.133 y las capas de la plataforma): es el que se usa para mostrar el código y explicar qué se hizo. <code>propuesto.yaml</code> cambia solo los parámetros marcados, de a uno, para medir el efecto de cada cambio. Ningún parámetro tiene un valor escondido en el código.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Etapa</th><th>Parámetro</th><th>Original (PRAIS 2026)</th><th>Alternativa</th><th>Qué gana</th><th>¿Cambia cifras?</th></tr></thead>
+    <tbody>
+      <tr><td class="c">1</td><td><code>region.umbral_huerfanos_km</code></td><td>50 km (C2 1.4)</td><td>—</td><td>Queda explícito</td><td>No</td></tr>
+      <tr><td class="c">1</td><td><code>radios.orden_rasterizacion</code></td><td>Área descendente, <code>sort_values</code> sin criterio de desempate (C2 2.5)</td><td>Área descendente + <code>id_radio</code> como desempate, orden estable</td><td>Determinismo: dos radios de igual área siempre reciben el mismo ID</td><td>No, salvo empates exactos</td></tr>
+      <tr><td class="c">2</td><td><code>grilla_trabajo</code></td><td><code>modo: gdal_auto</code>, extensión de los radios (80,93 / 78,48 m)</td><td>80 m fijos, extensión de regiones PRAIS, origen alineado</td><td>Misma grilla en 2010 y 2022; sin Antártida</td><td>Sí, poco <span class="inf">(a medir)</span></td></tr>
+      <tr><td class="c">2</td><td><code>grilla_trabajo.crs</code></td><td>EPSG:5347 (Gauss-Krüger faja 4)</td><td>Igual; opcional una proyección equivalente (igual área) para productos de superficie</td><td>En 5347 un píxel cubre hasta 3,3 % más superficie en el extremo oeste (factor areal 1,033 en −73,5° / −40°; 1,002 en el meridiano central). No afecta conteos por radio; sí densidades y km²</td><td>No en conteos</td></tr>
+      <tr><td class="c">2</td><td><code>mapbiomas.remuestreo</code></td><td><code>near</code></td><td><code>mode</code> donde la grilla de trabajo es más gruesa que el MapBiomas</td><td>El píxel MapBiomas mide 93 m de ancho a −22° y 57 m a −55°. Con 80 m, al sur de ~−35° se pasa a menos píxeles y <code>near</code> descarta información; <code>mode</code> conserva la clase dominante</td><td>Sí, en Patagonia <span class="inf">(a medir)</span></td></tr>
+      <tr><td class="c">2</td><td><code>clases_mapbiomas</code></td><td>3 metacategorías (no habitable, urbano, no urbano), humedales no urbano</td><td>Igual; opcional separar no urbano en subclases con peso propio (p. ej. cultivos vs. bosques)</td><td>Dasimetría con más información de cobertura</td><td>Sí <span class="inf">(evaluar con la validación)</span></td></tr>
+      <tr><td class="c">2</td><td><code>cobertura.codigo_nodata</code></td><td>0 es a la vez "no habitable" y NoData (C2 3.4)</td><td>NoData = 255, no habitable = 0</td><td>Ningún SIG confunde no habitable con sin dato</td><td>No</td></tr>
+      <tr><td class="c">3</td><td><code>ponderadores.estadistico</code></td><td>Mediana de densidad por píxel habitable, región × ámbito, radios con población &gt; 0</td><td>Media recortada, o densidades estimadas solo con radios "puros" (≥ X % de una clase)</td><td>El segundo es el método de Mennis y Hultgren (2006); estima mejor la densidad de cada clase</td><td>Sí</td></tr>
+      <tr><td class="c">3</td><td><code>ponderadores.peso_urbano</code></td><td>Píxel urbano = 1 − r (r = peso del no urbano); en radios urbanos los dos valen 1</td><td>Píxel urbano = 1 siempre; en radios urbanos, r estimado igual que en mixtos y rurales</td><td>Hoy, en un radio urbano la población se reparte igual sobre plazas, campos y manzanas. Como los pesos se normalizan por radio, el 1 − r casi no cambia nada (r ≤ 0,02)</td><td>Sí, en radios urbanos con mucho no urbano</td></tr>
+      <tr><td class="c">3</td><td><code>rasterizacion.all_touched</code></td><td>Sí, con radios chicos al final</td><td>—</td><td>Evita radios sin píxeles; ya está bien resuelto</td><td>No</td></tr>
+      <tr><td class="c">3</td><td><code>contingencias</code></td><td>Nivel 2: peso uniforme en todos sus píxeles; nivel 3: estampado vectorial</td><td>—</td><td>Quedan explícitos y con reporte de cuántos radios y personas</td><td>No</td></tr>
+      <tr><td class="c">4</td><td><code>cruce.remuestreo_dt</code></td><td><code>near</code> a la grilla de trabajo</td><td>—</td><td>Correcto para una capa categórica (DT de 0,001°: 111 m N-S, 64–103 m E-O)</td><td>No</td></tr>
+      <tr><td class="c">5</td><td><code>publicacion.formato</code></td><td>GeoTIFF float32 deflate</td><td>COG (Cloud-Optimized GeoTIFF) con <code>predictor=3</code></td><td>La plataforma lee por partes y los archivos pesan menos</td><td>No</td></tr>
+      <tr><td class="c">—</td><td><code>rendimiento.*</code></td><td>Bloques de 1024–2048, un hilo en C5</td><td>Bloque y hilos configurables</td><td>Velocidad; no toca resultados</td><td>No</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note">Cómo decidir si una mejora conviene: con una <b>validación por agregación</b>, la práctica estándar en mapeo dasimétrico (Eicher y Brewer 2001; Mennis 2003). Se agrupan los radios en fracciones censales, se corre la dasimetría con las fracciones como si fueran la unidad de entrada y se compara la población que el modelo asigna a cada radio contra la del censo (error absoluto medio, error relativo). La configuración con menor error gana. Esto además le da contenido concreto al "mecanismo de validación" que pide la consigna del panel.</div>
+</section>
+
+<section id="revision">
+  <h2>Revisión técnica del flujo</h2>
+  <p>Revisado con criterios de ingeniería de datos geoespaciales, validación de análisis y estándares de código. Ordenado por gravedad.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Gravedad</th><th>Hallazgo</th><th>Qué se hace en el pipeline</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill p-cut">alta</span></td><td><b>Denominador cambiante</b> en la Tabla 6 de 2022 (L11): la conclusión sobre NBI rural en TD se invierte.</td><td>Fórmula por indicador en el config; las tablas salen del pipeline.</td></tr>
+      <tr><td><span class="pill p-cut">alta</span></td><td><b>Criterio sin registro</b>: clases elegidas con desplegables (L3).</td><td>Tabla de clases obligatoria; corta si falta una clase.</td></tr>
+      <tr><td><span class="pill p-cut">alta</span></td><td><b>Comparabilidad 2010–2022</b>: grillas distintas por año.</td><td>Grilla fija en el config propuesto.</td></tr>
+      <tr><td><span class="pill p-dec">media</span></td><td>Conservación verificada solo en el total nacional; un error que se compense entre radios no se ve.</td><td>Conservación <b>por radio</b> (bincount del raster contra el censo).</td></tr>
+      <tr><td><span class="pill p-dec">media</span></td><td>Ninguna medida de error del modelo dasimétrico.</td><td>Validación por agregación (arriba) y análisis de sensibilidad de los ponderadores.</td></tr>
+      <tr><td><span class="pill p-dec">media</span></td><td>Orden de rasterización sin desempate: posible no determinismo.</td><td>Orden estable con <code>id_radio</code>.</td></tr>
+      <tr><td><span class="pill p-dec">media</span></td><td>Planillas del informe importadas con la configuración regional equivocada (punto decimal leído como miles).</td><td>CSV UTF-8 con punto decimal y xlsx con celdas numéricas, escritos por el pipeline.</td></tr>
+      <tr><td><span class="pill p-opt">baja</span></td><td>NoData = 0 = no habitable en la cobertura reclasificada.</td><td>Códigos separados.</td></tr>
+      <tr><td><span class="pill p-opt">baja</span></td><td>Distorsión areal de 5347 (hasta 3,3 %).</td><td>Documentada; solo afecta densidades y superficies.</td></tr>
+      <tr><td><span class="pill p-opt">baja</span></td><td>MAUP: los resultados por región × ámbito dependen de la unidad de agregación.</td><td>Se reportan siempre con su unidad; los rasters permiten reagregar.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Estándares para el código</h3>
+  <ul>
+    <li>Paquete con <code>requirements.txt</code> fijado (versiones exactas de GDAL, rasterio, geopandas, numpy); el cuaderno solo instala y llama.</li>
+    <li>Pruebas con un <b>caso sintético chico</b> (tres radios, grilla de 10 × 10) donde la respuesta se calcula a mano: conservación, contingencias, cruce y reproyección. Corren en segundos, en cada cambio, con GitHub Actions.</li>
+    <li>Un log con una línea de cuentas por etapa (filas, píxeles y personas que entran y salen) y un reporte de registros descartados.</li>
+    <li>Rutas con <code>pathlib</code>, archivos de texto con <code>encoding="utf-8"</code>, sin <code>except</code> genéricos; cada error explica qué falló.</li>
+    <li>Fuentes de cada insumo (URL, versión, fecha de descarga, licencia) en <code>FUENTES.md</code> dentro de la corrida.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Rendimiento y memoria</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Hoy</th><th>Propuesta</th><th>Efecto esperado</th></tr></thead>
+    <tbody>
+      <tr><td>Un raster por variable, cada uno con su pasada completa sobre IDs y pesos (C2 7.1, 7.8)</td><td>Una pasada por bloque que escribe todas las variables a la vez</td><td>Menos lecturas de disco; tiempo casi independiente de la cantidad de variables <span class="inf">(a medir)</span></td></tr>
+      <tr><td>Reproyección WGS84 en Python, un hilo, bloques de 1024 (C5: 2 a 4 h por año)</td><td><code>gdalwarp -r sum</code> con todos los hilos</td><td>Bastante más rápido <span class="inf">(a medir; hay que verificar que da lo mismo)</span></td></tr>
+      <tr><td>Validaciones con varias pasadas de lectura por archivo (C5: 5 pasadas)</td><td>Una pasada que calcula suma, mínimo, máximo, negativos y NaN juntos</td><td>Validar cuesta una lectura</td></tr>
+      <tr><td>Caché por nombre de archivo (si existe, se saltea)</td><td>Caché por hash de entradas + parámetros</td><td>Retoma sin riesgo de usar un archivo viejo</td></tr>
+      <tr><td>Rasters enteros en memoria en algunas celdas (C5 30)</td><td>Todo por bloques</td><td>Corre en el Colab estándar</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Cómo sabemos que el pipeline nuevo está bien</h2>
+  <div class="two">
+    <div>
+      <h3>Siempre: invariantes</h3>
+      <p>Lo que se verifica en cada corrida, con cualquier censo o capa: conservación por radio y total, sexo y ámbito que suman, agua y NBI acotados, tabla y raster del cruce idénticos, masa conservada al publicar. No dependen de ninguna corrida vieja.</p>
+    </div>
+    <div>
+      <h3>Una vez: prueba de aceptación</h3>
+      <p>El config <code>prais2026.yaml</code> con la grilla que estimó GDAL y los criterios del 22/09. Si da 3.808.137 y 5.665.133 y las mismas capas de la plataforma, la migración está bien. Después ese config queda como registro de cómo se hizo el PRAIS 2026, sin atar el pipeline a esa corrida.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Próximos pasos</h2>
+  <ul>
+    <li>Revisar este esquema y los criterios marcados "a confirmar" (vos y Juan).</li>
+    <li>Al final de la migración: medir el efecto de la grilla fija de 80 m contra el PRAIS 2026.</li>
+    <li>Correr la validación por agregación con <code>prais2026.yaml</code> para tener la línea de base del error, y después probar las mejoras de a una.</li>
+    <li>Crear el repo <code>prais-oe2</code> en GitHub. Desde esta sesión no puedo crear repos; lo creás vos (vacío) y lo conecto.</li>
+    <li>Arrancar por las etapas 0 y 1, que muestran el patrón completo: config, función, validación y manifiesto.</li>
+    <li>Seguir etapa por etapa y cerrar con la prueba de aceptación.</li>
+  </ul>
+  <p class="note">Las cifras de esta página salen de las reproducciones del 25 y 26/10 (<code>PRAIS/Cuadernos</code>) y de las celdas citadas de cada cuaderno. Lo marcado "a medir" o "a verificar" no está comprobado.</p>
+</section>
+
+<footer>Fuentes: copias de los cuadernos en el repo del agente (<code>notebooks/</code>), C2 2010 final <code>1quqV8…</code>, <code>docs/pipeline.md</code> y <code>docs/limitaciones.md</code> (L3, L4, L5, L8, L10, D5); salidas guardadas de C4 2022 (celda 3.1, grillas); informe final, Tablas 6, 8 y 10; <a href="https://prais4-reporting-manual.unccd.int/en/2026/SO2.html">manual de reporte PRAIS 2026, SO2</a>.</footer>
+
+</div>
