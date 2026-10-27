@@ -14,7 +14,7 @@ insumos:                      # rutas relativas a la carpeta de insumos (paráme
     sha256: null
   regiones:
     ruta: regiones_PRAIS.gpkg
-    sha256: null
+    sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
 
 radios:
   campo_codigo_mapa: COD_2022   # código de radio en la cartografía CONICET

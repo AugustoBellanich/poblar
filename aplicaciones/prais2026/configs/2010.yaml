@@ -8,13 +8,13 @@ anio_censo: 2010
 insumos:                      # rutas relativas a la carpeta de insumos (parámetro insumos=)
   tabla_censo:
     ruta: tabla_censo2010.xlsx  # export Redatam (C0), 15/05/2026
-    sha256: null              # completar con el de la ejecución de referencia
+    sha256: b84fdac064ee7b8c2424539f2e3d0ee513742b3aab0fe6f90c3db12037fd932d  # registrado el 27/10/2026
   radios:
     ruta: radios_2010.zip       # CONICET RI 11336/149711, RADIOS_2010_V2025-1
-    sha256: null
+    sha256: 464e9b4c265a27f46a48e0c5914ef4e833c14e8977b8f0c9c1eaad672f374baa
   regiones:
     ruta: regiones_PRAIS.gpkg
-    sha256: null
+    sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
 
 radios:
   campo_codigo_mapa: COD_2010   # código de radio en la cartografía CONICET

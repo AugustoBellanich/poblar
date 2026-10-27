@@ -160,13 +160,14 @@ class Ejecucion:
     def guardar_registros(self) -> None:
         """Escribe balance.csv y controles.csv/json (al terminar o al detenerse)."""
         if self.registros_balance:
-            claves: list[str] = []
-            for fila in self.registros_balance:
-                claves += [k for k in fila if k not in claves]
+            # Formato largo: una fila por medida (etapa, paso, medida, valor)
             with (self.carpeta / "balance.csv").open("w", newline="", encoding="utf-8") as f:
-                w = csv.DictWriter(f, fieldnames=claves)
-                w.writeheader()
-                w.writerows(self.registros_balance)
+                w = csv.writer(f)
+                w.writerow(["etapa", "paso", "medida", "valor"])
+                for fila in self.registros_balance:
+                    for medida, valor in fila.items():
+                        if medida not in ("etapa", "paso"):
+                            w.writerow([fila["etapa"], fila["paso"], medida, valor])
         filas = [asdict(v) for v in self.controles]
         with (self.carpeta / "controles.json").open("w", encoding="utf-8") as f:
             json.dump(filas, f, ensure_ascii=False, indent=2, default=str)
