@@ -83,6 +83,7 @@ def construir(ejecucion: Ejecucion, radios: pd.DataFrame | None = None) -> pd.Da
     d = ejecucion.dir_etapa(ETAPA)
     anio = cfg["anio_censo"]
     filas_bloque = int(obtener(cfg, "rendimiento.filas_por_bloque", 512))
+    banda = int(obtener(cfg, "cruce.banda", 1))
     campo_reg = obtener(cfg, "region.campo")
     campo_amb = obtener(cfg, "dasimetria.campo_ambito")
     d3 = ejecucion.carpeta / "3_dasimetria"
@@ -132,7 +133,7 @@ def construir(ejecucion: Ejecucion, radios: pd.DataFrame | None = None) -> pd.Da
         with rasterio.open(ids_tif) as si, rasterio.open(tematica) as st:
             for w in ventanas_por_filas(si.height, si.width, filas_bloque):
                 ids = si.read(1, window=w)
-                cat = st.read(1, window=w)
+                cat = st.read(banda, window=w)
                 zona = lut_zona[ids]
                 icat = lut_cat[cat]
                 sin_tabla = (cat != NODATA_CAT) & (icat < 0)
@@ -211,7 +212,8 @@ def construir(ejecucion: Ejecucion, radios: pd.DataFrame | None = None) -> pd.Da
 
     if obtener(cfg, "cruce.rasters_por_grupo", None):
         _rasters_grupo(ejecucion, d, tematica, cats, srcs_rutas={v: todas[v] for v in pedidas},
-                       grupos=list(obtener(cfg, "cruce.rasters_por_grupo")), anio=anio, filas=filas_bloque)
+                       grupos=list(obtener(cfg, "cruce.rasters_por_grupo")), anio=anio, filas=filas_bloque,
+                       banda=banda)
     log.info("[%s] listo: %d filas en la tabla larga", ETAPA, len(largo))
     return largo
 
@@ -228,7 +230,8 @@ def _controles_esperados(ejecucion: Ejecucion, binario: pd.DataFrame, grupo: str
 
 
 def _rasters_grupo(ejecucion: Ejecucion, d: Path, tematica: Path, cats: pd.DataFrame,
-                   srcs_rutas: dict[str, Path], grupos: list[str], anio: int, filas: int) -> None:
+                   srcs_rutas: dict[str, Path], grupos: list[str], anio: int, filas: int,
+                   banda: int = 1) -> None:
     """Rasters de cada variable con valor solo donde la categoría pertenece al grupo binario (0 fuera)."""
     for grupo in grupos:
         clases = cats.loc[cats["binario"] == grupo, "clase"].to_numpy()
@@ -244,7 +247,7 @@ def _rasters_grupo(ejecucion: Ejecucion, d: Path, tematica: Path, cats: pd.DataF
                 with rasterio.open(salida, "w", **perfil) as dst:
                     for w in ventanas_por_filas(s.height, s.width, filas):
                         x = s.read(1, window=w)
-                        g = en_grupo[st.read(1, window=w)]
+                        g = en_grupo[st.read(banda, window=w)]
                         out = np.where(x == NODATA_POB, x, np.where(g, x, 0)).astype(np.float32)
                         total += float(np.where(out == NODATA_POB, 0, out).astype(np.float64).sum())
                         dst.write(out, 1, window=w)

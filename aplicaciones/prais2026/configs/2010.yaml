@@ -14,10 +14,10 @@ insumos:                      # rutas relativas a la carpeta de insumos (paráme
     sha256: 464e9b4c265a27f46a48e0c5914ef4e833c14e8977b8f0c9c1eaad672f374baa
   mapbiomas:
     ruta: MB_prais_2015_100m.tif  # MapBiomas Argentina PRAIS26 (OE1), cobertura 2015, 100 m, EPSG:4326
-    sha256: null
+    sha256: 35b861a146f98bf85de4c898f75a3ccd8086a8d8f16feed38aa858a3e5a87de1  # registrado el 27/10/2026
   degradacion:
     ruta: degradacion_referencia_2010.tif  # copia de OE14_sinCOS_Referencia_Corregido_4326.tif (OE1, OE 1.4, período de referencia, EPSG:4326)
-    sha256: null
+    sha256: 7824aa2a38efc4a6ba38b182fa2737d613e262c8167e399d9235274c9800e903  # registrado el 27/10/2026
   regiones:
     ruta: regiones_PRAIS.gpkg
     sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
@@ -88,6 +88,7 @@ dasimetria:
 
 cruce:                        # C3: capa de tierras degradadas × población
   insumo: degradacion
+  banda: 1                    # C3 lee la banda 1
   clases:                     # C3 celda 5 (codebook del mail del 07/09/2026)
     - {clase: 0, etiqueta: "Sin datos",    binario: null}
     - {clase: 1, etiqueta: "Degradada",    binario: degradada}
