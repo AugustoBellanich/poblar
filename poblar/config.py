@@ -49,6 +49,11 @@ OBLIGATORIAS: dict[str, list[str]] = {
         "cruce.insumo",
         "cruce.clases",
     ],
+    "publicacion": [
+        "publicacion.grilla_referencia",
+        "publicacion.remuestreo",
+        "publicacion.productos",
+    ],
 }
 
 VALORES_PERMITIDOS: dict[str, set[Any]] = {

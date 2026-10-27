@@ -103,6 +103,30 @@ cruce:                        # C3: capa de tierras degradadas × población
     - {nombre: agua_sin_red, total: poblacion_dasimetrica, resta: agua_red}  # C3 celda 8
   rasters_por_grupo: []       # PRAIS 2026: los rasters en TD salieron del C4 (otra grilla); propuesto: [degradada]
 
+publicacion:                  # C5: reproyección a la grilla del MapBiomas (EPSG:4326) con suma
+  grilla_referencia: mapbiomas
+  remuestreo: sum
+  bloque: 1024                # C5 BLOCK_SIZE
+  compresion: deflate
+  tolerancia_masa_pct: 0.001  # C5: tolerancia del lote (advertencia)
+  plantilla_nombre: "{nombre}_100m_wgs84_{anio}.tif"   # nombres de la plataforma (capas nacionales)
+  productos:                  # producto de la etapa 3: nombre de entrega
+    poblacion_dasimetrica: OE2-3.Pob_dasim
+    pobla_mujer:           OE2-3.Pob_dasim_fem
+    pobla_varon:           OE2-3.Pob_dasim_mas
+    pobla_total_urbana:    OE2-3.Pob_dasim_urb
+    pobla_total_rural:     OE2-3.Pob_dasim_rur
+    nbi:                   OE2-1.Pob_dasim_nbi
+    nbi_mujer:             OE2-1.Pob_dasim_nbi-fem
+    nbi_varon:             OE2-1.Pob_dasim_nbi-mas
+    nbi_urbana:            OE2-1.Pob_dasim_nbi-urb
+    nbi_rural:             OE2-1.Pob_dasim_nbi-rur
+    agua_red:              OE2-2.Pob_dasim_agua
+    agua_red_mujer:        OE2-2.Pob_dasim_agua-fem
+    agua_red_varon:        OE2-2.Pob_dasim_agua-mas
+    agua_red_urbana:       OE2-2.Pob_dasim_agua-urb
+    agua_red_rural:        OE2-2.Pob_dasim_agua-rur
+
 rendimiento:
   filas_por_bloque: 512       # no cambia resultados
 
@@ -132,3 +156,5 @@ resultados_esperados:         # no bloqueante: verifica la reproducción de la e
   poblacion_raster: 40114871.996  # suma de poblacion_dasimetrica_2010.tif reproducido el 26/10/2026
   cruce:                        # C3 2010 del 22/09 (indicadores_pct_2010.csv), redondeado
     poblacion_dasimetrica: 3808137
+  publicacion:                  # C5 reproducido el 26/10/2026 (pipeline.md, E7)
+    poblacion_dasimetrica: 40114695.258

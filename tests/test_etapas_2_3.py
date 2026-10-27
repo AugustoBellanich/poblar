@@ -223,7 +223,8 @@ def _con_cruce(tmp_path: Path, insumos: Path) -> Path:  # noqa: F811
 def test_cruce_conserva_y_coincide_con_el_raster(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
     import pandas as pd
 
-    e = ejecutar(_con_cruce(tmp_path, insumos), insumos=insumos, salida=tmp_path / "ejecuciones")
+    e = ejecutar(_con_cruce(tmp_path, insumos), insumos=insumos, salida=tmp_path / "ejecuciones",
+                 etapas=[*ETAPAS_03, "cruce"])
     d = e.carpeta / "4_cruce"
     largo = pd.read_csv(d / "cruce_largo.csv")
     bal = pd.read_csv(e.carpeta / "balance.csv")
@@ -254,3 +255,22 @@ def test_retomar_solo_el_cruce(tmp_path: Path, insumos: Path) -> None:  # noqa: 
     ctrl = pd.read_csv(e.carpeta / "controles.csv")
     assert {"0_insumos", "1_radios", "2_grilla", "3_dasimetria", "4_cruce"} <= set(ctrl["etapa"])
     assert (e.carpeta / "4_cruce" / "cruce_largo.csv").exists()
+
+
+def test_publicacion_conserva_y_usa_la_grilla_de_referencia(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
+    import pandas as pd
+
+    ruta = _con_cruce(tmp_path, insumos)
+    cfg = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    cfg["publicacion"] = {"grilla_referencia": "mapbiomas", "remuestreo": "sum", "bloque": 16,
+                          "plantilla_nombre": "{nombre}_{anio}.tif",
+                          "productos": {"poblacion_dasimetrica": "POB", "nbi": "NBI"}}
+    ruta.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    e = ejecutar(ruta, insumos=insumos, salida=tmp_path / "ejecuciones")
+    d = e.carpeta / "5_publicacion"
+    t = pd.read_csv(d / "publicacion.csv")
+    assert set(t["archivo"]) == {"POB_2010.tif", "NBI_2010.tif"}
+    assert t["misma_grilla"].all()
+    assert _suma(d / "POB_2010.tif") == pytest.approx(165, abs=0.05)
+    with rasterio.open(d / "POB_2010.tif") as a, rasterio.open(insumos / "cobertura.tif") as b:
+        assert (a.width, a.height, a.crs) == (b.width, b.height, b.crs)

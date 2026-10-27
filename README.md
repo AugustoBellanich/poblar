@@ -24,7 +24,7 @@ En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipyn
 | 2 | Grilla de trabajo y cobertura del suelo | en prueba |
 | 3 | Mapeo dasimétrico | en prueba |
 | 4 | Cruce con capas temáticas | en prueba |
-| 5 | Publicación (rasters y tablas) | pendiente |
+| 5 | Publicación (rasters) | en prueba |
 
 ### Productos de cada ejecución
 
