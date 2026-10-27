@@ -8,7 +8,7 @@ from pathlib import Path
 from poblar import config as cfgmod
 from poblar.trazabilidad import ControlFallido, Ejecucion, log
 
-ETAPAS_DISPONIBLES = ["insumos", "radios", "grilla", "dasimetria"]  # pendientes: cruce_td, publicacion
+ETAPAS_DISPONIBLES = ["insumos", "radios", "grilla", "dasimetria", "cruce"]  # pendiente: publicacion
 
 
 def ejecutar(
@@ -39,6 +39,11 @@ def ejecutar(
 
     cfg = cfgmod.cargar(ruta_config, insumos)
     cfgmod.verificar(cfg, [e for e in lista if e in cfgmod.OBLIGATORIAS])
+    if trabajo is not None:
+        previa = Path(salida) / str(cfg["nombre"])
+        if previa.exists():  # retomar: traer lo ya generado (solo lo que falta o cambió)
+            log.info("Trayendo la ejecución previa de %s", previa)
+            sincronizar(previa, Path(trabajo) / previa.name)
     ejecucion = Ejecucion.crear(cfg, trabajo or salida)
     try:
         if "insumos" in lista:
@@ -57,7 +62,11 @@ def ejecutar(
         if "dasimetria" in lista:
             from poblar import dasimetria as etapa3
 
-            etapa3.construir(ejecucion, radios)
+            radios = etapa3.construir(ejecucion, radios)
+        if "cruce" in lista:
+            from poblar import cruce as etapa4
+
+            etapa4.construir(ejecucion, radios)
     except ControlFallido as e:
         if trabajo is not None:
             raise ControlFallido(str(e), carpeta=Path(salida) / ejecucion.carpeta.name) from e
@@ -68,8 +77,30 @@ def ejecutar(
         if trabajo is not None:
             destino = Path(salida) / ejecucion.carpeta.name
             log.info("Copiando la ejecución a %s", destino)
-            shutil.copytree(ejecucion.carpeta, destino, dirs_exist_ok=True)
+            sincronizar(ejecucion.carpeta, destino)
             ejecucion.carpeta = destino
     fallas = [v for v in ejecucion.controles if not v.ok]
     log.info("Ejecución terminada: %d controles, %d con advertencia o falla", len(ejecucion.controles), len(fallas))
     return ejecucion
+
+
+def sincronizar(origen: Path, destino: Path) -> int:
+    """Copia a ``destino`` los archivos de ``origen`` que faltan o difieren en tamaño o fecha.
+
+    Returns:
+        Cantidad de archivos copiados.
+    """
+    copiados = 0
+    for p in origen.rglob("*"):
+        if not p.is_file():
+            continue
+        q = destino / p.relative_to(origen)
+        st = p.stat()
+        if q.exists():
+            sq = q.stat()
+            if sq.st_size == st.st_size and int(sq.st_mtime) == int(st.st_mtime):
+                continue
+        q.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, q)
+        copiados += 1
+    return copiados

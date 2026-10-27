@@ -15,6 +15,9 @@ insumos:                      # rutas relativas a la carpeta de insumos (paráme
   mapbiomas:
     ruta: MB_prais_2015_100m.tif  # MapBiomas Argentina PRAIS26 (OE1), cobertura 2015, 100 m, EPSG:4326
     sha256: null
+  degradacion:
+    ruta: OE14_sinCOS_Referencia_Corregido_4326.tif  # OE1 (OE 1.4), mapa de Referencia (sinCOS, corregido), EPSG:4326
+    sha256: null
   regiones:
     ruta: regiones_PRAIS.gpkg
     sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
@@ -83,6 +86,22 @@ dasimetria:
     - {producto: nbi_urbana,          numerador: nbi_urbana}
     - {producto: nbi_rural,           numerador: nbi_rural}
 
+cruce:                        # C3: capa de tierras degradadas × población
+  insumo: degradacion
+  clases:                     # C3 celda 5 (codebook del mail del 07/09/2026)
+    - {clase: 0, etiqueta: "Sin datos",    binario: null}
+    - {clase: 1, etiqueta: "Degradada",    binario: degradada}
+    - {clase: 2, etiqueta: "No degradada", binario: no_degradada}   # estable
+    - {clase: 3, etiqueta: "No degradada", binario: no_degradada}   # mejora
+    - {clase: 9, etiqueta: "No degradada", binario: no_degradada}   # estable
+  grupo_expuesto: degradada
+  ambito_reporte: {Urbano: Urbano, Mixto: Rural, Rural: Rural}      # C3 8.5: Mixto se informa como Rural
+  variables: [poblacion_dasimetrica, nbi, agua_red, pobla_varon, pobla_mujer,
+              nbi_varon, nbi_mujer, agua_red_varon, agua_red_mujer]  # las 9 del C3 celda 7
+  derivadas:
+    - {nombre: agua_sin_red, total: poblacion_dasimetrica, resta: agua_red}  # C3 celda 8
+  rasters_por_grupo: []       # PRAIS 2026: los rasters en TD salieron del C4 (otra grilla); propuesto: [degradada]
+
 rendimiento:
   filas_por_bloque: 512       # no cambia resultados
 
@@ -110,3 +129,5 @@ resultados_esperados:         # no bloqueante: verifica la reproducción de la e
     ancho: 22958                 # C5: grilla 5347 del C2 final
     alto: 92392
   poblacion_raster: 40114871.996  # suma de poblacion_dasimetrica_2010.tif reproducido el 26/10/2026
+  cruce:                        # C3 2010 del 22/09 (indicadores_pct_2010.csv), redondeado
+    poblacion_dasimetrica: 3808137

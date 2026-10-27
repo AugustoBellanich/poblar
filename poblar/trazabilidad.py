@@ -82,6 +82,9 @@ class Ejecucion:
     cfg: dict[str, Any]
     controles: list[Control] = field(default_factory=list)
     registros_balance: list[dict[str, Any]] = field(default_factory=list)
+    # Registros de etapas corridas antes en la misma carpeta (al retomar una ejecución)
+    previos_controles: list[dict[str, Any]] = field(default_factory=list)
+    previos_balance: list[list[str]] = field(default_factory=list)
 
     # ------------------------------------------------------------ creación
     @classmethod
@@ -90,6 +93,7 @@ class Ejecucion:
         carpeta = Path(salida) / str(cfg["nombre"])
         carpeta.mkdir(parents=True, exist_ok=True)
         ejecucion = cls(carpeta=carpeta, cfg=cfg)
+        ejecucion._leer_previos()
         ejecucion._configurar_log()
         cfg_sin_meta = {k: v for k, v in cfg.items() if k != "_meta"}
         (carpeta / "config.yaml").write_text(
@@ -99,6 +103,19 @@ class Ejecucion:
         ejecucion._escribir_entorno()
         log.info("Ejecución '%s' en %s", cfg["nombre"], carpeta)
         return ejecucion
+
+    def _leer_previos(self) -> None:
+        """Conserva controles y balance de una ejecución anterior en la misma carpeta.
+
+        Al guardar, se reemplazan solo las etapas que se vuelven a correr.
+        """
+        cj = self.carpeta / "controles.json"
+        if cj.exists():
+            self.previos_controles = json.loads(cj.read_text(encoding="utf-8"))
+        bc = self.carpeta / "balance.csv"
+        if bc.exists():
+            with bc.open(encoding="utf-8") as f:
+                self.previos_balance = list(csv.reader(f))[1:]
 
     def _configurar_log(self) -> None:
         log.setLevel(logging.INFO)
@@ -159,16 +176,20 @@ class Ejecucion:
 
     def guardar_registros(self) -> None:
         """Escribe balance.csv y controles.csv/json (al terminar o al detenerse)."""
-        if self.registros_balance:
+        etapas_nuevas = {f["etapa"] for f in self.registros_balance} | {v.etapa for v in self.controles}
+        previos_b = [f for f in self.previos_balance if f and f[0] not in etapas_nuevas]
+        if self.registros_balance or previos_b:
             # Formato largo: una fila por medida (etapa, paso, medida, valor)
             with (self.carpeta / "balance.csv").open("w", newline="", encoding="utf-8") as f:
                 w = csv.writer(f)
                 w.writerow(["etapa", "paso", "medida", "valor"])
+                w.writerows(previos_b)
                 for fila in self.registros_balance:
                     for medida, valor in fila.items():
                         if medida not in ("etapa", "paso"):
                             w.writerow([fila["etapa"], fila["paso"], medida, valor])
-        filas = [asdict(v) for v in self.controles]
+        filas = [f for f in self.previos_controles if f.get("etapa") not in etapas_nuevas]
+        filas += [asdict(v) for v in self.controles]
         with (self.carpeta / "controles.json").open("w", encoding="utf-8") as f:
             json.dump(filas, f, ensure_ascii=False, indent=2, default=str)
         if filas:

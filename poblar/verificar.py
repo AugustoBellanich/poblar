@@ -127,3 +127,36 @@ def comparar_raster(
          "igual": dif_max <= tolerancia},
     ]
     return pd.DataFrame(filas)
+
+
+# Nombres de variables del C3 original → productos de poblar (configuración PRAIS 2026)
+NOMBRES_C3 = {
+    "poblacion_total": "poblacion_dasimetrica", "nbi": "nbi", "agua_red": "agua_red",
+    "varones": "pobla_varon", "mujeres": "pobla_mujer", "varones_nbi": "nbi_varon",
+    "mujeres_nbi": "nbi_mujer", "varones_red": "agua_red_varon", "mujeres_red": "agua_red_mujer",
+    "agua_sin_red": "agua_sin_red",
+}
+
+
+def comparar_cruce(nuevo: str | Path, referencia: str | Path, tolerancia: float = 0.5) -> pd.DataFrame:
+    """Compara ``4_cruce/cruce_largo.csv`` con ``exposicion_degradacion_<año>_largo.csv`` del C3.
+
+    Compara fila por fila (región × ámbito × clase × variable).
+
+    Returns:
+        Una fila por variable: suma nueva, suma de referencia, filas comparadas,
+        filas que difieren más que ``tolerancia`` personas y diferencia máxima.
+    """
+    n = pd.read_csv(nuevo)
+    r = pd.read_csv(referencia).rename(columns={"categoria": "clase", "poblacion": "valor"})
+    r["variable"] = r["variable"].map(NOMBRES_C3).fillna(r["variable"])
+    claves = ["region", "ambito", "clase", "variable"]
+    m = n.groupby(claves)["valor"].sum().to_frame("nuevo").join(
+        r.groupby(claves)["valor"].sum().to_frame("referencia"), how="outer").fillna(0.0)
+    m["dif"] = m["nuevo"] - m["referencia"]
+    t = m.reset_index().groupby("variable").agg(
+        suma_nueva=("nuevo", "sum"), suma_referencia=("referencia", "sum"), filas=("dif", "size"),
+        filas_distintas=("dif", lambda x: int((x.abs() > tolerancia).sum())),
+        dif_max=("dif", lambda x: float(x.abs().max())))
+    t["dif_suma"] = t["suma_nueva"] - t["suma_referencia"]
+    return t.reset_index()

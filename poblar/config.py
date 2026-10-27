@@ -45,6 +45,10 @@ OBLIGATORIAS: dict[str, list[str]] = {
         "dasimetria.ponderadores.peso_urbano",
         "dasimetria.variables",
     ],
+    "cruce": [
+        "cruce.insumo",
+        "cruce.clases",
+    ],
 }
 
 VALORES_PERMITIDOS: dict[str, set[Any]] = {
