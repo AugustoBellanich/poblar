@@ -7,11 +7,11 @@ anio_censo: 2022
 
 insumos:                      # rutas relativas a la carpeta de insumos (parámetro insumos=)
   tabla_censo:
-    ruta: tabla_censo2022.xlsx  # export Redatam (C0), 15/05/2026
-    sha256: null              # completar con el de la ejecución de referencia
+    ruta: tabla_censo2022.xlsx  # export Redatam (C0), 15/05/2026; 7.067.340 bytes (versión de C1)
+    sha256: 89000c8e18fb6b40a0363acefbc04e6c7fbeca3bcf2ca4a12daba3d4d4b13bef  # registrado el 27/10/2026
   radios:
     ruta: radios_2022.zip       # CONICET RI 11336/149711, RADIOS_2022_V2025-1
-    sha256: null
+    sha256: 5bbd7d02fc247e1d2e6c5dbe849db6f2650c316cc3900dcbee2f8f14e68e5460
   regiones:
     ruta: regiones_PRAIS.gpkg
     sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
