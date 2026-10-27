@@ -85,6 +85,8 @@ class Ejecucion:
     # Registros de etapas corridas antes en la misma carpeta (al retomar una ejecución)
     previos_controles: list[dict[str, Any]] = field(default_factory=list)
     previos_balance: list[list[str]] = field(default_factory=list)
+    # Carpeta final cuando se procesa en una carpeta de trabajo local (ver ejecutar(trabajo=...))
+    destino: Path | None = None
 
     # ------------------------------------------------------------ creación
     @classmethod
@@ -198,6 +200,16 @@ class Ejecucion:
                 w.writeheader()
                 w.writerows(filas)
 
+    def guardar_avance(self) -> None:
+        """Guarda controles y balance y, si se procesa en local, copia lo nuevo a la carpeta final.
+
+        Así, si la sesión se corta, lo terminado queda guardado y la ejecución se puede retomar.
+        """
+        self.guardar_registros()
+        if self.destino is not None:
+            n = sincronizar(self.carpeta, self.destino)
+            log.info("Avance guardado en %s (%d archivos copiados)", self.destino, n)
+
     def manifiesto(self) -> Path:
         """sha256 y tamaño de todo lo que produjo la ejecución."""
         ruta = self.carpeta / "manifiesto.csv"
@@ -215,3 +227,25 @@ class Ejecucion:
             w.writeheader()
             w.writerows(filas)
         return ruta
+
+
+def sincronizar(origen: Path, destino: Path) -> int:
+    """Copia a ``destino`` los archivos de ``origen`` que faltan o difieren en tamaño o fecha.
+
+    Returns:
+        Cantidad de archivos copiados.
+    """
+    copiados = 0
+    for p in origen.rglob("*"):
+        if not p.is_file():
+            continue
+        q = destino / p.relative_to(origen)
+        st = p.stat()
+        if q.exists():
+            sq = q.stat()
+            if sq.st_size == st.st_size and int(sq.st_mtime) == int(st.st_mtime):
+                continue
+        q.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, q)
+        copiados += 1
+    return copiados

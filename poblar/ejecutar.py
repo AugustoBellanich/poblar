@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import shutil
 from pathlib import Path
 
 from poblar import config as cfgmod
-from poblar.trazabilidad import ControlFallido, Ejecucion, log
+from poblar.trazabilidad import ControlFallido, Ejecucion, log, sincronizar
 
 ETAPAS_DISPONIBLES = ["insumos", "radios", "grilla", "dasimetria", "cruce", "publicacion"]
 
@@ -45,28 +44,35 @@ def ejecutar(
             log.info("Trayendo la ejecución previa de %s", previa)
             sincronizar(previa, Path(trabajo) / previa.name)
     ejecucion = Ejecucion.crear(cfg, trabajo or salida)
+    if trabajo is not None:
+        ejecucion.destino = Path(salida) / ejecucion.carpeta.name
     try:
         if "insumos" in lista:
             from poblar import insumos as etapa0
 
             etapa0.registrar(ejecucion)
+            ejecucion.guardar_avance()
         radios = None
         if "radios" in lista:
             from poblar import radios as etapa1
 
             radios = etapa1.construir(ejecucion)
+            ejecucion.guardar_avance()
         if "grilla" in lista:
             from poblar import grilla as etapa2
 
             etapa2.construir(ejecucion, radios)
+            ejecucion.guardar_avance()
         if "dasimetria" in lista:
             from poblar import dasimetria as etapa3
 
             radios = etapa3.construir(ejecucion, radios)
+            ejecucion.guardar_avance()
         if "cruce" in lista:
             from poblar import cruce as etapa4
 
             etapa4.construir(ejecucion, radios)
+            ejecucion.guardar_avance()
         if "publicacion" in lista:
             from poblar import publicacion as etapa5
 
@@ -87,24 +93,3 @@ def ejecutar(
     log.info("Ejecución terminada: %d controles, %d con advertencia o falla", len(ejecucion.controles), len(fallas))
     return ejecucion
 
-
-def sincronizar(origen: Path, destino: Path) -> int:
-    """Copia a ``destino`` los archivos de ``origen`` que faltan o difieren en tamaño o fecha.
-
-    Returns:
-        Cantidad de archivos copiados.
-    """
-    copiados = 0
-    for p in origen.rglob("*"):
-        if not p.is_file():
-            continue
-        q = destino / p.relative_to(origen)
-        st = p.stat()
-        if q.exists():
-            sq = q.stat()
-            if sq.st_size == st.st_size and int(sq.st_mtime) == int(st.st_mtime):
-                continue
-        q.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(p, q)
-        copiados += 1
-    return copiados

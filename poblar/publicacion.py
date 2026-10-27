@@ -9,11 +9,19 @@ grilla de destino por bloques para no cargar el raster entero en memoria.
 Productos en ``5_publicacion/``: un raster por producto con el nombre de
 entrega que fija la configuración, y ``publicacion.csv`` con la suma de origen,
 la suma publicada y la diferencia de cada uno.
+
+Cada raster es independiente: se procesan en paralelo (``publicacion.procesos``;
+no cambia los resultados) y cada uno se guarda apenas termina. Si la ejecución
+se corta, al retomarla se saltean los rasters que ya figuran en
+``publicacion.csv`` y cuyo archivo existe.
 """
 
 from __future__ import annotations
 
 import csv
+import multiprocessing
+import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -61,6 +69,41 @@ def reproyectar(origen: Path, referencia: Path, salida: Path, remuestreo: str, b
                     dst.write(datos, 1, window=v)
 
 
+def _publicar_uno(prod: str, origen: Path, referencia: Path, salida: Path, remuestreo: str, bloque: int,
+                  compresion: str) -> dict[str, Any]:
+    """Publica un raster y devuelve su fila de control (se ejecuta en un proceso aparte)."""
+    reproyectar(origen, referencia, salida, remuestreo, bloque, compresion)
+    s_in, s_out = _suma(origen), _suma(salida)
+    with rasterio.open(salida) as s, rasterio.open(referencia) as ref:
+        misma = (s.width, s.height, s.crs, s.transform) == (ref.width, ref.height, ref.crs, ref.transform)
+    dif = s_out - s_in
+    return {"producto": prod, "archivo": salida.name, "suma_origen": round(s_in, 3),
+            "suma_publicada": round(s_out, 3), "diferencia": round(dif, 3),
+            "diferencia_pct": round(100 * dif / s_in if s_in else 0.0, 6), "misma_grilla": misma}
+
+
+def _escribir_tabla(ruta: Path, filas: list[dict[str, Any]]) -> None:
+    with ruta.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(filas[0]))
+        w.writeheader()
+        w.writerows(filas)
+
+
+def _leer_tabla(ruta: Path, d: Path) -> dict[str, dict[str, Any]]:
+    """Filas de una publicación anterior cuyo archivo existe (para retomar)."""
+    if not ruta.exists():
+        return {}
+    previas = {}
+    with ruta.open(encoding="utf-8") as f:
+        for fila in csv.DictReader(f):
+            if (d / fila["archivo"]).exists():
+                fila["misma_grilla"] = fila["misma_grilla"] == "True"
+                for k in ("suma_origen", "suma_publicada", "diferencia", "diferencia_pct"):
+                    fila[k] = float(fila[k])
+                previas[fila["producto"]] = fila
+    return previas
+
+
 def construir(ejecucion: Ejecucion) -> list[dict[str, Any]]:
     """Corre la etapa 5. Devuelve una fila por raster publicado."""
     cfg = ejecucion.cfg
@@ -80,31 +123,44 @@ def construir(ejecucion: Ejecucion) -> list[dict[str, Any]]:
     if faltan:
         raise ValueError(f"publicacion.productos: productos que la etapa 3 no genera: {faltan}")
 
-    with rasterio.open(referencia) as ref:
-        grilla_ref = (ref.width, ref.height, ref.crs, ref.transform)
-    filas = []
-    for prod, nombre in nombres.items():
-        salida = d / plantilla.format(nombre=nombre, anio=anio, producto=prod)
-        log.info("[%s] %s → %s", ETAPA, prod, salida.name)
-        reproyectar(todas[prod], referencia, salida, remuestreo, bloque, compresion)
-        s_in, s_out = _suma(todas[prod]), _suma(salida)
-        dif = s_out - s_in
-        pct = 100 * dif / s_in if s_in else 0.0
-        with rasterio.open(salida) as s:
-            misma = (s.width, s.height, s.crs, s.transform) == grilla_ref
-        filas.append({"producto": prod, "archivo": salida.name, "suma_origen": round(s_in, 3),
-                      "suma_publicada": round(s_out, 3), "diferencia": round(dif, 3),
-                      "diferencia_pct": round(pct, 6), "misma_grilla": misma})
-        ejecucion.controlar(Control(ETAPA, f"grilla de referencia: {salida.name}", misma,
-                                    "coincide" if misma else "no coincide"))
-        ejecucion.controlar(Control(ETAPA, f"conservación de la masa: {prod}", abs(pct) <= tol_pct,
-                                    f"{s_in:,.3f} → {s_out:,.3f} ({dif:+,.3f}; {pct:+.5f} %)", s_out, s_in,
-                                    bloqueante=False))
+    procesos = int(obtener(cfg, "publicacion.procesos", 0) or os.cpu_count() or 1)
+    tabla = d / "publicacion.csv"
+    hechas = _leer_tabla(tabla, d)
+    filas: list[dict[str, Any]] = [hechas[p] for p in nombres if p in hechas]
+    if filas:
+        log.info("[%s] retomando: %d rasters ya publicados (%s)", ETAPA, len(filas),
+                 ", ".join(f["producto"] for f in filas))
+    pendientes = {p: n for p, n in nombres.items() if p not in hechas}
 
-    with (d / "publicacion.csv").open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(filas[0]))
-        w.writeheader()
-        w.writerows(filas)
+    def registrar(fila: dict[str, Any]) -> None:
+        ejecucion.controlar(Control(ETAPA, f"grilla de referencia: {fila['archivo']}", fila["misma_grilla"],
+                                    "coincide" if fila["misma_grilla"] else "no coincide"))
+        ejecucion.controlar(Control(ETAPA, f"conservación de la masa: {fila['producto']}",
+                                    abs(fila["diferencia_pct"]) <= tol_pct,
+                                    f"{fila['suma_origen']:,.3f} → {fila['suma_publicada']:,.3f} "
+                                    f"({fila['diferencia']:+,.3f}; {fila['diferencia_pct']:+.5f} %)",
+                                    fila["suma_publicada"], fila["suma_origen"], bloqueante=False))
+
+    for fila in filas:
+        registrar(fila)
+    log.info("[%s] %d rasters por publicar con %d procesos", ETAPA, len(pendientes), procesos)
+    # 'spawn': procesos nuevos (no copias del proceso principal), seguro con GDAL y con hilos.
+    with ProcessPoolExecutor(max_workers=procesos, mp_context=multiprocessing.get_context("spawn")) as pool:
+        futuros = {pool.submit(_publicar_uno, prod, todas[prod], referencia,
+                               d / plantilla.format(nombre=nombre, anio=anio, producto=prod),
+                               remuestreo, bloque, compresion): prod
+                   for prod, nombre in pendientes.items()}
+        for fut in as_completed(futuros):
+            fila = fut.result()
+            log.info("[%s] publicado %s → %s", ETAPA, fila["producto"], fila["archivo"])
+            filas.append(fila)
+            registrar(fila)
+            _escribir_tabla(tabla, filas)
+            ejecucion.guardar_avance()   # cada raster queda guardado apenas termina
+
+    orden = list(nombres)
+    filas.sort(key=lambda f: orden.index(f["producto"]))
+    _escribir_tabla(tabla, filas)
 
     esperado = obtener(cfg, "resultados_esperados.publicacion", None) or {}
     por_prod = {f["producto"]: f["suma_publicada"] for f in filas}

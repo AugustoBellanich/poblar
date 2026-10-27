@@ -274,3 +274,31 @@ def test_publicacion_conserva_y_usa_la_grilla_de_referencia(tmp_path: Path, insu
     assert _suma(d / "POB_2010.tif") == pytest.approx(165, abs=0.05)
     with rasterio.open(d / "POB_2010.tif") as a, rasterio.open(insumos / "cobertura.tif") as b:
         assert (a.width, a.height, a.crs) == (b.width, b.height, b.crs)
+
+
+def test_publicacion_retoma_lo_ya_publicado(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
+    """Si se corta, al retomar no repite los rasters ya publicados y completa los que faltan."""
+    import pandas as pd
+
+    ruta = _con_cruce(tmp_path, insumos)
+    cfg = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    cfg["publicacion"] = {"grilla_referencia": "mapbiomas", "remuestreo": "sum", "bloque": 16, "procesos": 2,
+                          "plantilla_nombre": "{nombre}_{anio}.tif",
+                          "productos": {"poblacion_dasimetrica": "POB", "nbi": "NBI"}}
+    ruta.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    salida, local = tmp_path / "salida", tmp_path / "local"
+    e = ejecutar(ruta, insumos=insumos, salida=salida, trabajo=local)
+    d = e.carpeta / "5_publicacion"
+    t = pd.read_csv(d / "publicacion.csv")
+    # simula un corte: se pierde NBI (archivo y fila) y la copia local
+    (d / "NBI_2010.tif").unlink()
+    t[t.producto != "nbi"].to_csv(d / "publicacion.csv", index=False)
+    import shutil
+
+    shutil.rmtree(local)
+    mtime_pob = (d / "POB_2010.tif").stat().st_mtime
+    e2 = ejecutar(ruta, insumos=insumos, salida=salida, etapas=["publicacion"], trabajo=tmp_path / "local2")
+    d2 = e2.carpeta / "5_publicacion"
+    assert (d2 / "NBI_2010.tif").exists()
+    assert (d2 / "POB_2010.tif").stat().st_mtime == mtime_pob   # no se volvió a generar
+    assert set(pd.read_csv(d2 / "publicacion.csv")["producto"]) == {"poblacion_dasimetrica", "nbi"}
