@@ -1,14 +1,14 @@
 # PRAIS 2026 — OE2 — censo 2010
-# Reproduce la corrida final del 22/09/2026 (la que alimenta tablas y plataforma).
+# Reproduce la ejecución final del 22/09/2026 (la que alimenta tablas y plataforma).
 # Cada criterio indica de dónde sale. Ver aplicaciones/prais2026/README.md.
 
-corrida: prais2026_2010
+nombre: prais2026_2010
 anio_censo: 2010
 
-insumos:                      # rutas relativas a la carpeta de insumos (argumento insumos=)
+insumos:                      # rutas relativas a la carpeta de insumos (parámetro insumos=)
   tabla_censo:
     ruta: tabla_censo2010.xlsx  # export Redatam (C0), 15/05/2026
-    sha256: null              # completar con el de la corrida de referencia
+    sha256: null              # completar con el de la ejecución de referencia
   radios:
     ruta: radios_2010.zip       # CONICET RI 11336/149711, RADIOS_2010_V2025-1
     sha256: null
@@ -25,7 +25,7 @@ radios:
 
 region:
   campo: Reg_PRAIS
-  umbral_huerfanos_km: 50     # C2 1.4, UMBRAL_DISTANCIA = 50000
+  umbral_vecino_km: 50       # C2 1.4, UMBRAL_DISTANCIA = 50000
   etiqueta_fuera: "Fuera de Región (Antártida/Islas)"
   excluir_fuera: false        # PRAIS 2026 los mantuvo; propuesto: true
 
@@ -33,14 +33,14 @@ grilla_trabajo:
   crs: 5347                   # POSGAR 2007 / Argentina 4 (C2 1.1)
 
 referencia:
-  poblacion_integrada: 40114872   # pipeline.log de la corrida final
+  poblacion_integrada: 40114872   # pipeline.log de la ejecución final
 
-validaciones:
-  modo: cortar
+controles:
+  modo: detener               # detener | advertir
   tolerancia_personas: 0
   consistencia_bloqueante: true
 
-aceptacion:                   # no bloquea: sirve para confirmar que se reprodujo el PRAIS 2026
+resultados_esperados:         # no bloqueante: verifica la reproducción de la ejecución del 22/09/2026
   radios:
     total: 52378
     por_region:

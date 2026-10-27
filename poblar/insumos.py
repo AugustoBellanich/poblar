@@ -1,6 +1,6 @@
 """Etapa 0: registro de insumos.
 
-Para cada insumo del config calcula el sha256, lee sus metadatos (CRS, grilla,
+Para cada insumo de la configuración calcula el sha256, lee sus metadatos (CRS, grilla,
 columnas, cantidad de registros) y los compara con lo declarado. No transforma
 nada: deja ``0_insumos/insumos.csv`` como huella de lo que entró.
 """
@@ -15,7 +15,7 @@ from typing import Any
 import pandas as pd
 import pyogrio
 
-from poblar.trazabilidad import Corrida, Validacion, log, sha256
+from poblar.trazabilidad import Control, Ejecucion, log, sha256
 
 ETAPA = "0_insumos"
 EXT_TABLA = {".xlsx", ".xls", ".csv"}
@@ -79,22 +79,22 @@ def _meta_raster(ins: dict[str, Any]) -> dict[str, Any]:
         }
 
 
-def registrar(corrida: Corrida) -> list[dict[str, Any]]:
-    """Registra todos los insumos del config.
+def registrar(ejecucion: Ejecucion) -> list[dict[str, Any]]:
+    """Registra todos los insumos de la configuración.
 
     Returns:
         Una fila por insumo con su hash y metadatos.
     """
     filas: list[dict[str, Any]] = []
-    for nombre, ins in (corrida.cfg.get("insumos") or {}).items():
+    for nombre, ins in (ejecucion.cfg.get("insumos") or {}).items():
         ruta = Path(ins["ruta"])
         existe = ruta.exists()
-        corrida.validar(Validacion(ETAPA, f"existe {nombre}", existe, str(ruta)))
+        ejecucion.controlar(Control(ETAPA, f"existe {nombre}", existe, str(ruta)))
 
         h = sha256(ruta)
         esperado = ins.get("sha256")
         if esperado:
-            corrida.validar(Validacion(
+            ejecucion.controlar(Control(
                 ETAPA, f"sha256 {nombre}", h == esperado,
                 "coincide con el declarado" if h == esperado else f"es {h[:12]}…, se declaró {esperado[:12]}…",
                 h, esperado,
@@ -105,7 +105,7 @@ def registrar(corrida: Corrida) -> list[dict[str, Any]]:
             meta = _meta_tabla(ins)
         elif ext in EXT_VECTOR:
             meta = _meta_vector(ins)
-            corrida.validar(Validacion(
+            ejecucion.controlar(Control(
                 ETAPA, f"{nombre} no vacío", meta["registros"] > 0,
                 f"{meta['registros']} registros leídos (metadatos: {meta['registros_metadatos']})",
                 meta["registros"],
@@ -117,10 +117,10 @@ def registrar(corrida: Corrida) -> list[dict[str, Any]]:
 
         fila = {"insumo": nombre, "ruta": str(ruta), "bytes": ruta.stat().st_size, "sha256": h, **meta}
         filas.append(fila)
-        corrida.cuenta(ETAPA, nombre, tipo=meta["tipo"], registros=meta.get("registros", ""),
+        ejecucion.balance(ETAPA, nombre, tipo=meta["tipo"], registros=meta.get("registros", ""),
                        sha256=h[:12])
 
-    d = corrida.dir_etapa(ETAPA)
+    d = ejecucion.dir_etapa(ETAPA)
     with (d / "insumos.json").open("w", encoding="utf-8") as f:
         json.dump(filas, f, ensure_ascii=False, indent=2, default=str)
     planas = [{k: (json.dumps(v, ensure_ascii=False) if isinstance(v, list) else v) for k, v in f.items()}

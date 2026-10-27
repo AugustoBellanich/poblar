@@ -1,4 +1,4 @@
-"""Carpeta de corrida, log, cuentas por etapa, validaciones y manifiesto."""
+"""Carpeta de ejecución, registro (log), balance por etapa, controles y manifiesto."""
 
 from __future__ import annotations
 
@@ -26,8 +26,8 @@ PAQUETES_REGISTRADOS = [
 BLOQUE_HASH = 1 << 24  # 16 MB
 
 
-class ValidacionFallida(RuntimeError):
-    """Una validación en modo 'cortar' no se cumplió."""
+class ControlFallido(RuntimeError):
+    """Un control bloqueante no se cumplió con el modo 'detener'."""
 
 
 def sha256(ruta: str | Path) -> str:
@@ -40,8 +40,8 @@ def sha256(ruta: str | Path) -> str:
 
 
 @dataclass
-class Validacion:
-    """Resultado de un chequeo. ``ok`` False en modo 'cortar' frena la corrida."""
+class Control:
+    """Resultado de un control. Si es bloqueante y falla con el modo 'detener', la ejecución se detiene."""
 
     etapa: str
     nombre: str
@@ -53,30 +53,30 @@ class Validacion:
 
 
 @dataclass
-class Corrida:
-    """Estado de una corrida: carpeta, config, validaciones y cuentas."""
+class Ejecucion:
+    """Estado de una ejecución: carpeta, configuración, controles y balance."""
 
     carpeta: Path
     cfg: dict[str, Any]
-    validaciones: list[Validacion] = field(default_factory=list)
-    cuentas: list[dict[str, Any]] = field(default_factory=list)
+    controles: list[Control] = field(default_factory=list)
+    registros_balance: list[dict[str, Any]] = field(default_factory=list)
 
     # ------------------------------------------------------------ creación
     @classmethod
-    def crear(cls, cfg: dict[str, Any], salida: str | Path) -> Corrida:
-        """Crea ``<salida>/<corrida>/``, copia el config y configura el log."""
-        carpeta = Path(salida) / str(cfg["corrida"])
+    def crear(cls, cfg: dict[str, Any], salida: str | Path) -> Ejecucion:
+        """Crea ``<salida>/<nombre>/``, copia la configuración y prepara el registro."""
+        carpeta = Path(salida) / str(cfg["nombre"])
         carpeta.mkdir(parents=True, exist_ok=True)
-        corrida = cls(carpeta=carpeta, cfg=cfg)
-        corrida._configurar_log()
+        ejecucion = cls(carpeta=carpeta, cfg=cfg)
+        ejecucion._configurar_log()
         cfg_sin_meta = {k: v for k, v in cfg.items() if k != "_meta"}
         (carpeta / "config.yaml").write_text(
             yaml.safe_dump(cfg_sin_meta, allow_unicode=True, sort_keys=False), encoding="utf-8"
         )
         shutil.copy2(cfg["_meta"]["config"], carpeta / "config_original.yaml")
-        corrida._escribir_entorno()
-        log.info("Corrida '%s' en %s", cfg["corrida"], carpeta)
-        return corrida
+        ejecucion._escribir_entorno()
+        log.info("Ejecución '%s' en %s", cfg["nombre"], carpeta)
+        return ejecucion
 
     def _configurar_log(self) -> None:
         log.setLevel(logging.INFO)
@@ -117,44 +117,44 @@ class Corrida:
         return d
 
     # ------------------------------------------------------------ registro
-    def cuenta(self, etapa: str, paso: str, **valores: Any) -> None:
-        """Una línea de cuentas: qué entra y qué sale de cada paso."""
+    def balance(self, etapa: str, paso: str, **valores: Any) -> None:
+        """Una línea del balance: qué entra y qué sale de cada paso."""
         fila = {"etapa": etapa, "paso": paso, **valores}
-        self.cuentas.append(fila)
+        self.registros_balance.append(fila)
         log.info("[%s] %s: %s", etapa, paso, ", ".join(f"{k}={v}" for k, v in valores.items()))
 
-    def validar(self, v: Validacion) -> Validacion:
-        """Registra una validación; en modo 'cortar' frena si es bloqueante y falla."""
-        self.validaciones.append(v)
-        estado = "OK" if v.ok else ("FALLA" if v.bloqueante else "AVISO")
+    def controlar(self, v: Control) -> Control:
+        """Registra un control; con el modo 'detener', detiene la ejecución si es bloqueante y falla."""
+        self.controles.append(v)
+        estado = "OK" if v.ok else ("FALLA" if v.bloqueante else "ADVERTENCIA")
         log.info("[%s] %s %s — %s", v.etapa, estado, v.nombre, v.detalle)
-        modo = (self.cfg.get("validaciones") or {}).get("modo", "cortar")
-        if not v.ok and v.bloqueante and modo == "cortar":
+        modo = (self.cfg.get("controles") or {}).get("modo", "detener")
+        if not v.ok and v.bloqueante and modo == "detener":
             self.guardar_registros()
-            raise ValidacionFallida(f"[{v.etapa}] {v.nombre}: {v.detalle}")
+            raise ControlFallido(f"[{v.etapa}] {v.nombre}: {v.detalle}")
         return v
 
     def guardar_registros(self) -> None:
-        """Escribe cuentas.csv y validaciones.csv/json (se llama al terminar o al cortar)."""
-        if self.cuentas:
+        """Escribe balance.csv y controles.csv/json (al terminar o al detenerse)."""
+        if self.registros_balance:
             claves: list[str] = []
-            for fila in self.cuentas:
+            for fila in self.registros_balance:
                 claves += [k for k in fila if k not in claves]
-            with (self.carpeta / "cuentas.csv").open("w", newline="", encoding="utf-8") as f:
+            with (self.carpeta / "balance.csv").open("w", newline="", encoding="utf-8") as f:
                 w = csv.DictWriter(f, fieldnames=claves)
                 w.writeheader()
-                w.writerows(self.cuentas)
-        filas = [asdict(v) for v in self.validaciones]
-        with (self.carpeta / "validaciones.json").open("w", encoding="utf-8") as f:
+                w.writerows(self.registros_balance)
+        filas = [asdict(v) for v in self.controles]
+        with (self.carpeta / "controles.json").open("w", encoding="utf-8") as f:
             json.dump(filas, f, ensure_ascii=False, indent=2, default=str)
         if filas:
-            with (self.carpeta / "validaciones.csv").open("w", newline="", encoding="utf-8") as f:
+            with (self.carpeta / "controles.csv").open("w", newline="", encoding="utf-8") as f:
                 w = csv.DictWriter(f, fieldnames=list(filas[0]))
                 w.writeheader()
                 w.writerows(filas)
 
     def manifiesto(self) -> Path:
-        """sha256 y tamaño de todo lo que produjo la corrida."""
+        """sha256 y tamaño de todo lo que produjo la ejecución."""
         ruta = self.carpeta / "manifiesto.csv"
         excluir = {"manifiesto.csv", "pipeline.log"}
         filas = []

@@ -1,6 +1,6 @@
-"""Comparación de una salida de poblar contra una corrida de referencia.
+"""Comparación de una salida de poblar contra una ejecución de referencia.
 
-Sirve para la prueba de aceptación: por ejemplo, comparar ``1_radios/radios.parquet``
+Sirve para verificar la reproducción de resultados publicados: por ejemplo, comparar ``1_radios/radios.parquet``
 con la caché ``02_radios_curados_<año>.parquet`` del C2 original.
 """
 

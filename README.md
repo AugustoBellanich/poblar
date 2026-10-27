@@ -1,42 +1,42 @@
 # poblar
 
-Distribuye datos censales (población, sexo, ámbito, NBI, agua de red) desde los radios censales a una grilla, usando la cobertura del suelo, y los cruza con capas temáticas (por ejemplo, degradación de tierras). Cada corrida deja registro de qué insumos entraron, con qué criterios y qué validaciones pasó.
+Distribuye datos censales (población, sexo, ámbito, NBI, agua de red) desde los radios censales a una grilla, usando la cobertura del suelo, y los cruza con capas temáticas (por ejemplo, degradación de tierras). Cada ejecución registra qué insumos se usaron, con qué criterios y qué controles cumplió.
 
 Primera aplicación: **OE2 del Informe Nacional PRAIS 2026** (CNULD, ONDTyD). Ver [`aplicaciones/prais2026/`](aplicaciones/prais2026/).
 
 ## Cómo funciona
 
-Una corrida se define en un archivo YAML: insumos, criterios, grilla, tolerancias y productos. No hay valores escondidos en el código: si falta un criterio, la corrida no arranca.
+Una ejecución se define en un archivo de configuración YAML: insumos, criterios, grilla, tolerancias y productos. No hay valores implícitos en el código: si falta un criterio, la ejecución no comienza.
 
 ```python
-from poblar import correr
-correr("aplicaciones/prais2026/configs/2010.yaml", insumos="ruta/a/insumos", salida="corridas")
+from poblar import ejecutar
+ejecutar("aplicaciones/prais2026/configs/2010.yaml", insumos="ruta/a/insumos", salida="ejecuciones")
 ```
 
-En Colab: [`cuadernos/correr_en_colab.ipynb`](cuadernos/correr_en_colab.ipynb).
+En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb).
 
 ### Etapas
 
 | # | Etapa | Estado |
 |---|---|---|
-| 0 | Registro de insumos (hash, metadatos, chequeos) | ✔ |
+| 0 | Registro de insumos (hash, metadatos, controles) | ✔ |
 | 1 | Base de radios (tabla + cartografía, región, orden de rasterización) | ✔ |
 | 2 | Grilla de trabajo y cobertura del suelo | pendiente |
 | 3 | Mapeo dasimétrico | pendiente |
 | 4 | Cruce con capas temáticas | pendiente |
 | 5 | Publicación (rasters y tablas) | pendiente |
 
-### Qué deja cada corrida
+### Productos de cada ejecución
 
 ```
-corridas/<corrida>/
-  config.yaml, config_original.yaml   lo que se corrió
+ejecuciones/<nombre>/
+  config.yaml, config_original.yaml   configuración ejecutada
   entorno.txt                         versiones de Python, librerías y GDAL
   0_insumos/insumos.csv               sha256 y metadatos de cada insumo
   1_radios/radios.parquet             radios listos para la grilla
-  1_radios/*.csv                      radios sin cartografía, duplicados, huérfanos, fuera de región
-  cuentas.csv                         qué entra y qué sale de cada paso
-  validaciones.csv                    cada chequeo, con su resultado
+  1_radios/*.csv                      radios sin cartografía, duplicados, sin intersección, fuera de región
+  balance.csv                         qué entra y qué sale de cada paso
+  controles.csv                       cada control, con su resultado
   manifiesto.csv                      sha256 de todos los productos
   pipeline.log
 ```
@@ -54,7 +54,7 @@ pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-Las pruebas usan un caso sintético chico (cinco radios, dos regiones) donde el resultado se conoce de antemano.
+Las pruebas usan un caso sintético (cinco radios, dos regiones) con resultado conocido de antemano.
 
 ## Relación con otras herramientas
 
@@ -62,4 +62,14 @@ Las pruebas usan un caso sintético chico (cinco radios, dos regiones) donde el 
 
 ## Datos
 
-Los datos no se guardan en este repositorio: los configs registran nombre, origen y sha256 de cada insumo.
+Los datos no se guardan en este repositorio: las configuraciones registran nombre, origen y sha256 de cada insumo.
+
+## Documentación
+
+- [`docs/guia_de_estilo.md`](docs/guia_de_estilo.md): glosario y convenciones de redacción.
+- [`docs/decisiones.md`](docs/decisiones.md): registro de decisiones de diseño.
+- [`docs/esquema_pipeline.html`](docs/esquema_pipeline.html): esquema del flujo completo.
+
+## Licencia
+
+[Apache 2.0](LICENSE). Motivos en [`docs/decisiones.md`](docs/decisiones.md#d-001--licencia-apache-20-27102026). La licencia cubre el código; los insumos conservan sus propias licencias.

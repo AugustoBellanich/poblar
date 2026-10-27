@@ -14,9 +14,9 @@ import pytest
 import yaml
 from shapely.geometry import box
 
-from poblar import correr
+from poblar import ejecutar
 from poblar.config import ErrorConfig
-from poblar.trazabilidad import ValidacionFallida
+from poblar.trazabilidad import ControlFallido
 
 X0, Y0 = 4_500_000, 6_000_000  # coordenadas plausibles en EPSG:5347
 FUERA = "Fuera de Región (Antártida/Islas)"
@@ -42,7 +42,7 @@ def insumos(tmp_path: Path) -> Path:
         geometry=[
             _caja(1_000, 12_000, 2_000),          # 101: dentro de Norte
             _caja(2_000, 8_000, 3_000, 4_000),    # 102: 2 km en Sur, 2 km en Norte → empate; ver abajo
-            _caja(-5_000, 12_000, 1_000),         # 103: a 4 km de Norte → huérfano cercano
+            _caja(-5_000, 12_000, 1_000),         # 103: a 4 km de Norte → sin intersección, cercano
             _caja(-200_000, 0, 1_000),            # 104: a 190 km → fuera de región
             _caja(6_000, 2_000, 1_000),           # 105: solo en el mapa
         ],
@@ -73,7 +73,7 @@ def insumos(tmp_path: Path) -> Path:
 
 def _config(tmp_path: Path, **cambios) -> Path:
     cfg = {
-        "corrida": "prueba",
+        "nombre": "prueba",
         "anio_censo": 2010,
         "insumos": {
             "tabla_censo": {"ruta": "tabla_censo2010.xlsx"},
@@ -81,11 +81,11 @@ def _config(tmp_path: Path, **cambios) -> Path:
             "regiones": {"ruta": "regiones.gpkg"},
         },
         "radios": {"campo_codigo_mapa": "COD_2010", "union": "inner", "id_desde": "tabla", "orden": "area_desc"},
-        "region": {"campo": "Reg_PRAIS", "umbral_huerfanos_km": 50, "etiqueta_fuera": FUERA,
+        "region": {"campo": "Reg_PRAIS", "umbral_vecino_km": 50, "etiqueta_fuera": FUERA,
                    "excluir_fuera": False},
         "grilla_trabajo": {"crs": 5347},
         "referencia": {"poblacion_integrada": 165},
-        "validaciones": {"modo": "cortar", "tolerancia_personas": 0},
+        "controles": {"modo": "detener", "tolerancia_personas": 0},
     }
     for clave, valor in cambios.items():
         nodo = cfg
@@ -102,15 +102,15 @@ def _config(tmp_path: Path, **cambios) -> Path:
 
 
 def test_union_inner_regiones_y_orden(tmp_path: Path, insumos: Path) -> None:
-    c = correr(_config(tmp_path), insumos=insumos, salida=tmp_path / "corridas")
+    c = ejecutar(_config(tmp_path), insumos=insumos, salida=tmp_path / "ejecuciones")
     r = gpd.read_parquet(c.carpeta / "1_radios" / "radios.parquet").set_index("id_radio")
 
     assert len(r) == 4                                  # 105 (solo mapa) y 199 (solo tabla) quedan afuera
     assert r["pobla_total"].sum() == 165
     assert r.loc["020010101", "Reg_PRAIS"] == "Norte"
     assert r.loc["020010102", "Reg_PRAIS"] == "Sur"     # mayor área en Sur
-    assert r.loc["020010103", "Reg_PRAIS"] == "Norte"   # huérfano a 4 km
-    assert r.loc["020010104", "Reg_PRAIS"] == FUERA     # huérfano a 190 km
+    assert r.loc["020010103", "Reg_PRAIS"] == "Norte"   # sin intersección, a 4 km
+    assert r.loc["020010104", "Reg_PRAIS"] == FUERA     # sin intersección, a 190 km
     assert r.crs.to_epsg() == 5347
     # Orden: área descendente → 102 (12 km²) primero
     assert r.sort_values("raster_id").index[0] == "020010102"
@@ -118,12 +118,12 @@ def test_union_inner_regiones_y_orden(tmp_path: Path, insumos: Path) -> None:
     assert sin_carto["id_radio"].tolist() == ["020010199"]
     assert (c.carpeta / "manifiesto.csv").exists()
     assert (c.carpeta / "0_insumos" / "insumos.csv").exists()
-    assert all(v.ok for v in c.validaciones)
+    assert all(v.ok for v in c.controles)
 
 
 def test_union_left_desde_mapa_conserva_radios_sin_dato(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"radios.union": "left", "radios.id_desde": "mapa"})
-    c = correr(cfg, insumos=insumos, salida=tmp_path / "corridas")
+    c = ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
     r = gpd.read_parquet(c.carpeta / "1_radios" / "radios.parquet").set_index("id_radio")
     assert len(r) == 5
     assert r.loc["020010105", "pobla_total"] == 0
@@ -131,7 +131,7 @@ def test_union_left_desde_mapa_conserva_radios_sin_dato(tmp_path: Path, insumos:
 
 def test_excluir_fuera_de_region(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"region.excluir_fuera": True, "referencia.poblacion_integrada": 160})
-    c = correr(cfg, insumos=insumos, salida=tmp_path / "corridas")
+    c = ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
     r = gpd.read_parquet(c.carpeta / "1_radios" / "radios.parquet")
     assert FUERA not in set(r["Reg_PRAIS"])
     assert r["pobla_total"].sum() == 160
@@ -139,11 +139,11 @@ def test_excluir_fuera_de_region(tmp_path: Path, insumos: Path) -> None:
 
 def test_referencia_distinta_corta(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"referencia.poblacion_integrada": 999})
-    with pytest.raises(ValidacionFallida):
-        correr(cfg, insumos=insumos, salida=tmp_path / "corridas")
+    with pytest.raises(ControlFallido):
+        ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
 
 
 def test_falta_criterio_no_arranca(tmp_path: Path, insumos: Path) -> None:
-    cfg = _config(tmp_path, **{"region.umbral_huerfanos_km": None})
+    cfg = _config(tmp_path, **{"region.umbral_vecino_km": None})
     with pytest.raises(ErrorConfig):
-        correr(cfg, insumos=insumos, salida=tmp_path / "corridas")
+        ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones")
