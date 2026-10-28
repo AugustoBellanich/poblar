@@ -54,6 +54,12 @@ OBLIGATORIAS: dict[str, list[str]] = {
         "publicacion.remuestreo",
         "publicacion.productos",
     ],
+    "tablas": [
+        "tablas.urbano_rural",
+        "tablas.variables",
+        "tablas.salidas",
+        "cruce.grupo_expuesto",
+    ],
 }
 
 VALORES_PERMITIDOS: dict[str, set[Any]] = {

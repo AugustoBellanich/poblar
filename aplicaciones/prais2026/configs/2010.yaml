@@ -127,6 +127,29 @@ publicacion:                  # C5: reproyección a la grilla del MapBiomas (EPS
     agua_red_urbana:       OE2-2.Pob_dasim_agua-urb
     agua_red_rural:        OE2-2.Pob_dasim_agua-rur
 
+tablas:                       # etapa 6: indicadores país y TD
+  variable_poblacion: poblacion
+  urbano_rural:               # persona: urbano/rural del censo; radio: ámbito del radio (cruce.ambito_reporte)
+    pais: persona             # informe PRAIS 2026: columnas "Total país" con urbano/rural del censo
+    td: radio                 # informe PRAIS 2026: columnas TD con el ámbito del radio (C3 8.5, Mixto → Rural)
+  variables:                  # campos de la tabla censal (país) y productos del cruce (TD) por grupo
+    poblacion:
+      censo: {total: pobla_total, mujer: pobla_mujer, varon: pobla_varon, urbano: pobla_total_urbana, rural: pobla_total_rural}
+      td:    {total: poblacion_dasimetrica, mujer: pobla_mujer, varon: pobla_varon, urbano: pobla_total_urbana, rural: pobla_total_rural}
+    nbi:
+      censo: {total: nbi_total, mujer: nbi_mujer, varon: nbi_varon, urbano: nbi_urbana, rural: nbi_rural}
+      td:    {total: nbi, mujer: nbi_mujer, varon: nbi_varon, urbano: nbi_urbana, rural: nbi_rural}
+    agua_red:
+      censo: {total: agua_red_total, mujer: agua_red_mujer, varon: agua_red_varon, urbano: agua_red_urbana, rural: agua_red_rural}
+      td:    {total: agua_red, mujer: agua_red_mujer, varon: agua_red_varon, urbano: agua_red_urbana, rural: agua_red_rural}
+  salidas:                    # una tabla por entrada; la fórmula vale para todas sus filas (CNULD, manual PRAIS 2026)
+    - {nombre: OE2-1_nbi,                 variable: nbi,       por: grupos,   formula: incidencia}   # SO2-1 (informe: Tabla 6)
+    - {nombre: OE2-1_nbi_regiones,        variable: nbi,       por: regiones, formula: incidencia, grupos: [total, urbano, rural]}   # Tabla 7
+    - {nombre: OE2-2_agua,                variable: agua_red,  por: grupos,   formula: incidencia}   # SO2-2 (Tabla 8)
+    - {nombre: OE2-2_agua_regiones,       variable: agua_red,  por: regiones, formula: incidencia, grupos: [total, urbano, rural]}   # Tabla 9
+    - {nombre: OE2-3_poblacion,           variable: poblacion, por: grupos,   formula: exposicion}   # SO2-3 (Tabla 10)
+    - {nombre: OE2-3_poblacion_regiones,  variable: poblacion, por: regiones, formula: exposicion, grupos: [total, mujer, varon]}   # Tabla 11
+
 rendimiento:
   filas_por_bloque: 512       # no cambia resultados
 

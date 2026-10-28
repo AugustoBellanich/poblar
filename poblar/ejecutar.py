@@ -7,7 +7,7 @@ from pathlib import Path
 from poblar import config as cfgmod
 from poblar.trazabilidad import ControlFallido, Ejecucion, log, sincronizar
 
-ETAPAS_DISPONIBLES = ["insumos", "radios", "grilla", "dasimetria", "cruce", "publicacion"]
+ETAPAS_DISPONIBLES = ["insumos", "radios", "grilla", "dasimetria", "cruce", "publicacion", "tablas"]
 
 
 def ejecutar(
@@ -77,6 +77,11 @@ def ejecutar(
             from poblar import publicacion as etapa5
 
             etapa5.construir(ejecucion)
+            ejecucion.guardar_avance()
+        if "tablas" in lista:
+            from poblar import tablas as etapa6
+
+            etapa6.construir(ejecucion)
     except ControlFallido as e:
         if trabajo is not None:
             raise ControlFallido(str(e), carpeta=Path(salida) / ejecucion.carpeta.name) from e

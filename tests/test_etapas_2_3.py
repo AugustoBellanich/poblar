@@ -266,7 +266,8 @@ def test_publicacion_conserva_y_usa_la_grilla_de_referencia(tmp_path: Path, insu
                           "plantilla_nombre": "{nombre}_{anio}.tif",
                           "productos": {"poblacion_dasimetrica": "POB", "nbi": "NBI"}}
     ruta.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
-    e = ejecutar(ruta, insumos=insumos, salida=tmp_path / "ejecuciones")
+    e = ejecutar(ruta, insumos=insumos, salida=tmp_path / "ejecuciones",
+                 etapas=[*ETAPAS_03, "cruce", "publicacion"])
     d = e.carpeta / "5_publicacion"
     t = pd.read_csv(d / "publicacion.csv")
     assert set(t["archivo"]) == {"POB_2010.tif", "NBI_2010.tif"}
@@ -287,7 +288,8 @@ def test_publicacion_retoma_lo_ya_publicado(tmp_path: Path, insumos: Path) -> No
                           "productos": {"poblacion_dasimetrica": "POB", "nbi": "NBI"}}
     ruta.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
     salida, local = tmp_path / "salida", tmp_path / "local"
-    e = ejecutar(ruta, insumos=insumos, salida=salida, trabajo=local)
+    e = ejecutar(ruta, insumos=insumos, salida=salida, trabajo=local,
+                 etapas=[*ETAPAS_03, "cruce", "publicacion"])
     d = e.carpeta / "5_publicacion"
     t = pd.read_csv(d / "publicacion.csv")
     # simula un corte: se pierde NBI (archivo y fila) y la copia local
@@ -315,3 +317,62 @@ def test_sincronizar_no_copia_parciales_y_verifica(tmp_path: Path) -> None:
     assert (b / "x" / "listo.tif").read_bytes() == b"1" * 1000
     assert not (b / "x" / "en_curso.tif.parcial").exists()
     assert not list(b.rglob("*.parcial"))
+
+
+def test_tablas_formulas_y_union_de_periodos(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
+    import pandas as pd
+
+    from poblar.tablas import unir_periodos
+
+    tabla = pd.read_excel(insumos / "tabla_censo2010.xlsx", dtype={"id_radio": str})
+    tabla["nbi_mujer"] = [6, 3, 2, 0, 0]
+    tabla["nbi_varon"] = tabla["nbi_total"] - tabla["nbi_mujer"]
+    tabla["nbi_urbana"] = [10, 3, 0, 0, 0]
+    tabla["nbi_rural"] = tabla["nbi_total"] - tabla["nbi_urbana"]
+    tabla.to_excel(insumos / "tabla_censo2010.xlsx", index=False)
+    ruta = _con_cruce(tmp_path, insumos)
+    cfg = yaml.safe_load(ruta.read_text(encoding="utf-8"))
+    cfg["dasimetria"]["variables"] += [{"producto": "pobla_varon", "numerador": "pobla_varon"},
+                                       {"producto": "nbi_mujer", "numerador": "nbi_mujer"},
+                                       {"producto": "nbi_varon", "numerador": "nbi_varon"}]
+    cfg["cruce"]["variables"] = None
+    def grupos(t, m, v, u, r):
+        return {"total": t, "mujer": m, "varon": v, "urbano": u, "rural": r}
+    cfg["tablas"] = {
+        "urbano_rural": {"pais": "persona", "td": "radio"},
+        "variables": {
+            "poblacion": {"censo": grupos("pobla_total", "pobla_mujer", "pobla_varon", "pobla_total_urbana",
+                                          "pobla_total_rural"),
+                          "td": grupos("poblacion_dasimetrica", "pobla_mujer", "pobla_varon", "-", "-")},
+            "nbi": {"censo": grupos("nbi_total", "nbi_mujer", "nbi_varon", "nbi_urbana", "nbi_rural"),
+                    "td": grupos("nbi", "nbi_mujer", "nbi_varon", "-", "-")},
+        },
+        "salidas": [{"nombre": "nbi", "variable": "nbi", "por": "grupos", "formula": "incidencia"},
+                    {"nombre": "pob", "variable": "poblacion", "por": "grupos", "formula": "exposicion"}],
+    }
+    ruta.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    e = ejecutar(ruta, insumos=insumos, salida=tmp_path / "ejecuciones",
+                 etapas=[*ETAPAS_03, "cruce", "tablas"])
+    d = e.carpeta / "6_tablas"
+    ind = pd.read_csv(d / "indicadores.csv").set_index(["ambito", "region", "variable", "grupo"])
+    largo = pd.read_csv(e.carpeta / "4_cruce" / "cruce_largo.csv")
+    td_pob = largo[(largo.binario == "degradada") & (largo.variable == "poblacion_dasimetrica")]["valor"].sum()
+    td_nbi = largo[(largo.binario == "degradada") & (largo.variable == "nbi")]["valor"].sum()
+    assert ind.loc[("pais", "NACIONAL", "poblacion", "total"), "n"] == pytest.approx(165)
+    assert ind.loc[("td", "NACIONAL", "poblacion", "total"), "n"] == pytest.approx(td_pob)
+    assert ind.loc[("td", "NACIONAL", "nbi", "total"), "incidencia"] == pytest.approx(100 * td_nbi / td_pob)
+    assert ind.loc[("td", "NACIONAL", "poblacion", "total"), "exposicion"] == pytest.approx(100 * td_pob / 165)
+    t = pd.read_csv(d / "pob.csv")
+    assert set(t["formula"]) == {"exposicion"}
+    u = unir_periodos({2010: e.carpeta, 2022: e.carpeta}, tmp_path / "unidas")
+    assert {"n_td_2010", "pct_td_2022"} <= set(u["nbi"].columns)
+
+    from poblar.tablas import comparar_informe
+
+    expo = round(100 * td_pob / 165, 1)
+    ref = tmp_path / "ref.csv"
+    pd.DataFrame([{"tabla": "10", "anio": 2010, "ambito": "td", "region": "NACIONAL", "variable": "poblacion",
+                   "grupo": "total", "n": round(td_pob), "pct": expo, "linea": 1}]).to_csv(ref, index=False)
+    c = comparar_informe({2010: e.carpeta}, ref)
+    assert "exposicion" in c.loc[0, "formula_que_coincide"]
+    assert abs(c.loc[0, "dif_n"]) < 1
