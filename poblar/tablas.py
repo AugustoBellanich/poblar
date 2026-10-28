@@ -175,6 +175,9 @@ def unir_periodos(carpetas: dict[int, str | Path], salida: str | Path) -> dict[s
     Returns:
         ``{nombre de tabla: DataFrame}``.
     """
+    faltan = [f"{anio} ({c})" for anio, c in carpetas.items() if not (Path(c) / ETAPA / "indicadores.csv").exists()]
+    if faltan:
+        raise FileNotFoundError("Falta correr la etapa 'tablas' en: " + "; ".join(faltan))
     salida = Path(salida)
     salida.mkdir(parents=True, exist_ok=True)
     nombres = sorted({p.stem for c in carpetas.values() for p in (Path(c) / ETAPA).glob("*.csv")} - {"indicadores"})
