@@ -1,7 +1,7 @@
 """Llamadas a las herramientas de línea de comandos de GDAL.
 
 Se usan ``gdalwarp`` y ``gdal_rasterize`` (las mismas que el método original)
-para que la grilla y la rasterización sean idénticas a las del PRAIS 2026.
+porque fijan la grilla y la rasterización de forma reproducible.
 """
 
 from __future__ import annotations

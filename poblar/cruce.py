@@ -1,6 +1,6 @@
 """Etapa 4: cruce de la población con una capa temática categórica (por ejemplo, tierras degradadas).
 
-Método (equivalente al cuaderno C3 del PRAIS 2026):
+Método:
 
 1. La capa temática se lleva a la grilla de trabajo con vecino más cercano
    (``gdalwarp -r near``, Byte, nodata 255).
@@ -69,7 +69,7 @@ def alinear(origen: Path, referencia: Path, salida: Path) -> None:
         xres, yres = r.transform.a, -r.transform.e
     with rasterio.open(origen) as s:
         s_srs = f"EPSG:{s.crs.to_epsg()}" if s.crs.to_epsg() is not None else s.crs.to_wkt()
-    # Mismos argumentos que el C3 (-te, -tr y -ts): la grilla queda idéntica a la de población.
+    # -te, -tr y -ts: la grilla queda idéntica a la de población.
     ejecutar_gdal(["gdalwarp", "-overwrite", "-s_srs", s_srs, "-t_srs", crs,
                    "-te", str(b.left), str(b.bottom), str(b.right), str(b.top),
                    "-tr", str(xres), str(yres), "-ts", str(w), str(h),

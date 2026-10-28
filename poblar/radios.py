@@ -2,7 +2,6 @@
 
 Une la tabla censal con la cartografía de radios, limpia geometrías, pasa al CRS
 de trabajo, deduplica y asigna a cada radio una región por área mayoritaria.
-Reemplaza al C1 (unión tabla↔mapa) y a las secciones 1.4 y 2.1–2.5 del C2.
 
 Salida principal: ``1_radios/radios.parquet`` con una fila por radio, la
 columna ``raster_id`` (orden de rasterización) y la región asignada.
@@ -57,7 +56,7 @@ def asignar_region(
 ) -> tuple[gpd.GeoDataFrame, pd.DataFrame]:
     """Región por área mayoritaria; radios sin intersección: región más cercana si está a ≤ umbral.
 
-    Es el método del C2 (celda 1.4): intersección con las regiones disueltas, se
+    Intersección con las regiones disueltas, se
     queda la de mayor área; los radios sin intersección van a la región más
     cercana si está a menos de ``umbral_m`` metros, y si no, a ``etiqueta_fuera``.
 
@@ -135,7 +134,7 @@ def construir(ejecucion: Ejecucion) -> gpd.GeoDataFrame:
     ejecucion.balance(ETAPA, f"unión ({union}, id desde {id_desde})", filas=len(radios),
                    radios_sin_dato_censal=nulos)
 
-    # 4. Deduplicación por id (como el C2: los ids nulos quedan como 'nan' y colapsan en uno)
+    # 4. Deduplicación por id (los ids nulos quedan como 'nan' y colapsan en uno)
     radios["id_radio"] = radios["id_radio"].astype(str).str.strip()
     rep = radios.duplicated(subset="id_radio", keep="first")
     radios[rep][["id_radio", "pobla_total"]].to_csv(d / "radios_descartados_duplicados.csv",
@@ -145,7 +144,7 @@ def construir(ejecucion: Ejecucion) -> gpd.GeoDataFrame:
     ejecucion.balance(ETAPA, "deduplicación", quitados=int(rep.sum()), poblacion_quitada=pob_rep,
                    quedan=len(radios))
 
-    # 5. Geometrías: quitar vacías, reproyectar y reparar (orden del C2 2.3)
+    # 5. Geometrías: quitar vacías, reproyectar y reparar
     vacias = radios.geometry.is_empty | radios.geometry.isna()
     radios = radios[~vacias].to_crs(epsg=crs)
     radios["geometry"] = radios.geometry.make_valid()
@@ -172,7 +171,7 @@ def construir(ejecucion: Ejecucion) -> gpd.GeoDataFrame:
         radios = radios[~fuera]
         ejecucion.balance(ETAPA, "exclusión fuera de región", quitados=int(fuera.sum()))
 
-    # 7. Orden de rasterización: grandes primero, chicos al final (C2 2.5)
+    # 7. Orden de rasterización: grandes primero, chicos al final (el último que toca un píxel se lo queda)
     radios["area_m2"] = radios.geometry.area
     if obtener(cfg, "radios.orden", "area_desc") == "area_desc_estable":
         radios = radios.sort_values(["area_m2", "id_radio"], ascending=[False, True], kind="mergesort")

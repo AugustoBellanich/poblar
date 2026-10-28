@@ -3,7 +3,7 @@
 La cobertura sintética está en EPSG:4326 (como MapBiomas) sobre las mismas dos
 regiones de la prueba de las etapas 0 y 1. Se verifica la conservación, las
 contingencias y que el atajo de pesos por búsqueda equivale a rasterizar los
-pesos con ``gdal_rasterize`` (el método del C2).
+pesos con ``gdal_rasterize``.
 
 Correr: ``python -m pytest -q``
 """
@@ -367,12 +367,3 @@ def test_tablas_formulas_y_union_de_periodos(tmp_path: Path, insumos: Path) -> N
     u = unir_periodos({2010: e.carpeta, 2022: e.carpeta}, tmp_path / "unidas")
     assert {"n_td_2010", "pct_td_2022"} <= set(u["nbi"].columns)
 
-    from poblar.tablas import comparar_informe
-
-    expo = round(100 * td_pob / 165, 1)
-    ref = tmp_path / "ref.csv"
-    pd.DataFrame([{"tabla": "10", "anio": 2010, "ambito": "td", "region": "NACIONAL", "variable": "poblacion",
-                   "grupo": "total", "n": round(td_pob), "pct": expo, "linea": 1}]).to_csv(ref, index=False)
-    c = comparar_informe({2010: e.carpeta}, ref)
-    assert "exposicion" in c.loc[0, "formula_que_coincide"]
-    assert abs(c.loc[0, "dif_n"]) < 1

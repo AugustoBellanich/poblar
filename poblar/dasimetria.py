@@ -5,7 +5,7 @@ por la cobertura (urbano / no urbano) con ponderadores empíricos por región y
 ámbito, y genera en una sola pasada los rasters de las variables derivadas
 (sexo, ámbito, NBI, agua de red) como población del píxel × tasa del radio.
 
-Método (equivalente a las secciones 4 a 7 del cuaderno C2 del PRAIS 2026):
+Método:
 
 1. Raster de identificadores de radio (``gdal_rasterize -at``; el último radio
    que toca un píxel se lo queda, por eso los radios chicos van al final).
@@ -80,7 +80,7 @@ def calcular_ponderadores(df: pd.DataFrame, campo_region: str, campo_ambito: str
                           ambitos: list[str], ref: str, peso_urbano: str) -> pd.DataFrame:
     """Matriz de ponderadores región × ámbito (columnas ``<ámbito>_pxUrbano`` / ``_pxNoUrbano``).
 
-    ``peso_urbano``: ``complemento`` (1 − r, método PRAIS 2026) o ``uno`` (1).
+    ``peso_urbano``: ``complemento`` (1 − r) o ``uno`` (1).
     """
     validos = df[(df["pobla_total"] > 0) & (df["densidad_px"] > 0)]
     med = (validos.groupby([campo_region, campo_ambito])["densidad_px"].median()
@@ -127,7 +127,7 @@ def construir(ejecucion: Ejecucion, radios: gpd.GeoDataFrame | None = None) -> g
     radios["px_total"] = px_tot[rid]
     radios["px_habitable"] = radios["px_urbano"] + radios["px_no_urbano"]
     sin_hab = radios["px_habitable"] == 0
-    # Como el C2: para la densidad, un radio sin píxeles habitables cuenta como 1 píxel no urbano.
+    # Para la densidad, un radio sin píxeles habitables cuenta como 1 píxel no urbano.
     radios.loc[sin_hab, ["px_no_urbano", "px_habitable"]] = 1
     radios["densidad_px"] = radios["pobla_total"] / radios["px_habitable"]
     ejecucion.balance(ETAPA, "composición", radios_sin_pixeles_habitables=int(sin_hab.sum()),
@@ -151,7 +151,7 @@ def construir(ejecucion: Ejecucion, radios: gpd.GeoDataFrame | None = None) -> g
 
     # 4. Suma de pesos por radio. El peso de cada píxel es el del radio dueño del
     #    píxel según su clase; equivale a rasterizar peso_u y peso_nu con el mismo
-    #    orden y ALL_TOUCHED (C2 4.4), sin rasterizar dos veces.
+    #    orden y ALL_TOUCHED, sin rasterizar dos veces.
     lut_u = np.zeros(n + 1, dtype=np.float32)
     lut_nu = np.zeros(n + 1, dtype=np.float32)
     lut_u[rid] = radios["peso_u"].to_numpy(np.float32)
@@ -251,7 +251,7 @@ def construir(ejecucion: Ejecucion, radios: gpd.GeoDataFrame | None = None) -> g
 
     # 7. Contingencia de nivel 3: reparto uniforme sobre el polígono, sumado a lo existente.
     #    Después se recalculan las variables en esas ventanas (población final × tasa del dueño
-    #    del píxel), como en el C2, donde las variables se derivan del raster ya estampado.
+    #    del píxel): las variables se derivan del raster ya estampado.
     if m3.any():
         for k, delta in _estampar_nivel3(radios[m3], rutas, tasas, ids_tif).items():
             totales[k] += delta
@@ -272,7 +272,7 @@ def _sin_nodata(a: np.ndarray) -> np.ndarray:
 
 def _estampar_nivel3(extremos: gpd.GeoDataFrame, rutas: dict[str, Path],
                      tasas: dict[str, np.ndarray], ids_tif: Path) -> dict[str, float]:
-    """Suma pobla_total / n_píxeles en los píxeles que toca cada polígono (C2 5.3).
+    """Suma pobla_total / n_píxeles en los píxeles que toca cada polígono (contingencia de nivel 3).
 
     Returns:
         Cambio en la suma de cada raster (para actualizar los totales sin releer).

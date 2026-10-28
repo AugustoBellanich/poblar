@@ -1,8 +1,8 @@
 """Etapa 5: publicación de los rasters en la grilla de entrega.
 
-Método (equivalente al cuaderno C5 del PRAIS 2026): cada raster de cantidad de
-la etapa 3 se reproyecta a la grilla de un insumo de referencia (en el PRAIS
-2026, la del MapBiomas en EPSG:4326) con remuestreo por suma, que conserva el
+Método: cada raster de cantidad de
+la etapa 3 se reproyecta a la grilla de un insumo de referencia (por ejemplo, la de
+la cobertura del suelo en EPSG:4326) con remuestreo por suma, que conserva el
 total de personas salvo en los bordes de la grilla de referencia. Se recorre la
 grilla de destino por bloques para no cargar el raster entero en memoria.
 
@@ -52,7 +52,7 @@ def _suma(ruta: Path, filas: int = 1024) -> float:
 
 def reproyectar(origen: Path, referencia: Path, salida: Path, remuestreo: str, bloque: int,
                 compresion: str) -> None:
-    """Reproyecta ``origen`` a la grilla de ``referencia`` recorriendo el destino por bloques (C5, celda 32)."""
+    """Reproyecta ``origen`` a la grilla de ``referencia`` recorriendo el destino por bloques."""
     with rasterio.open(origen) as src, rasterio.open(referencia) as ref:
         perfil = ref.profile.copy()
         perfil.update(driver="GTiff", dtype="float32", count=1, nodata=NODATA, compress=compresion,

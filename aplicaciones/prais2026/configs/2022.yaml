@@ -1,50 +1,50 @@
-# PRAIS 2026 — OE2 — censo 2022
-# Reproduce la ejecución final del 22/09/2026 (la que alimenta tablas y plataforma).
-# Cada criterio indica de dónde sale. Ver aplicaciones/prais2026/README.md.
+# PRAIS 2026 — OE2 — censo 2022 (período de reporte)
+# Configuración con la que se produjeron las cifras y las capas oficiales del OE2 del
+# Informe Nacional PRAIS 2026. Referencia de cada clave: docs/configuracion.md.
 
 nombre: prais2026_2022
 anio_censo: 2022
 
 insumos:                      # rutas relativas a la carpeta de insumos (parámetro insumos=)
-  tabla_censo:
-    ruta: tabla_censo2022.xlsx  # export Redatam (C0), 15/05/2026; 7.067.340 bytes (versión de C1)
-    sha256: 89000c8e18fb6b40a0363acefbc04e6c7fbeca3bcf2ca4a12daba3d4d4b13bef  # registrado el 27/10/2026
-  radios:
-    ruta: radios_2022.zip       # CONICET RI 11336/149711, RADIOS_2022_V2025-1
+  tabla_censo:                # población por radio: total, sexo, urbana/rural, NBI y agua de red (Redatam, INDEC)
+    ruta: tabla_censo2022.xlsx
+    sha256: 89000c8e18fb6b40a0363acefbc04e6c7fbeca3bcf2ca4a12daba3d4d4b13bef
+  radios:                     # cartografía de radios censales (CONICET, repositorio 11336/149711)
+    ruta: radios_2022.zip
     sha256: 5bbd7d02fc247e1d2e6c5dbe849db6f2650c316cc3900dcbee2f8f14e68e5460
-  mapbiomas:
-    ruta: MB_prais_2023_100m.tif  # MapBiomas Argentina PRAIS26 (OE1), cobertura 2023, 100 m, EPSG:4326
-    sha256: 0c53ad1bc669cacfda28d5c9613fc4803ad75ed056a361026eda5fb2bb6887a4  # registrado el 27/10/2026
-  degradacion:
-    ruta: degradacion_reporte_2022.tif  # copia de CondicionFinal_Estado_Reporte2_4326.tif (OE1, OE 1.4, período de reporte 2, EPSG:4326)
-    sha256: 731e34bdc19d36cfbc5ecd1dcfea7609e1d7054935444be7a57561614f6361c5  # registrado el 27/10/2026
-  regiones:
+  mapbiomas:                  # cobertura del suelo MapBiomas Argentina, colección PRAIS 2026, 2023, 100 m, EPSG:4326
+    ruta: MB_prais_2023_100m.tif
+    sha256: 0c53ad1bc669cacfda28d5c9613fc4803ad75ed056a361026eda5fb2bb6887a4
+  degradacion:                # «Condición final de la degradación de la tierra (2000-2023)», OE1, EPSG:4326
+    ruta: degradacion_reporte_2022.tif
+    sha256: 731e34bdc19d36cfbc5ecd1dcfea7609e1d7054935444be7a57561614f6361c5
+  regiones:                   # regiones PRAIS 2026
     ruta: regiones_PRAIS.gpkg
     sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
 
 radios:
-  campo_codigo_mapa: COD_2022   # código de radio en la cartografía CONICET
-  union: inner                # C1 de junio: solo radios con tabla y mapa (el 25/10 se probó 'left')
+  campo_codigo_mapa: COD_2022    # código de radio en la cartografía
+  union: inner                # solo radios presentes en la tabla y en el mapa (los demás quedan registrados)
   id_desde: tabla
-  orden: area_desc            # C2 2.5: área descendente (sin desempate, como el original)
+  orden: area_desc            # orden de rasterización: grandes primero, chicos al final
   exportar_gpkg: false
 
 region:
   campo: Reg_PRAIS
-  umbral_vecino_km: 50       # C2 1.4, UMBRAL_DISTANCIA = 50000
+  umbral_vecino_km: 50        # radio sin intersección: región más cercana si está a 50 km o menos
   etiqueta_fuera: "Fuera de Región (Antártida/Islas)"
-  excluir_fuera: false        # PRAIS 2026 los mantuvo; propuesto: true
+  excluir_fuera: false        # se conservan (Antártida e islas del Atlántico Sur)
 
 grilla_trabajo:
-  crs: 5347                   # POSGAR 2007 / Argentina 4 (C2 1.1)
-  modo: gdal_auto             # C2 3.1: gdalwarp sin -tr; GDAL estima la resolución (propuesto: fija, 80 m)
-  extension: radios           # C2 3.1: límites de los radios curados (propuesto: regiones)
-  remuestreo_cobertura: near  # C2 3.1
+  crs: 5347                   # POSGAR 2007 / Argentina 4 (métrico)
+  modo: gdal_auto             # resolución estimada por GDAL a partir de la cobertura (~80 m)
+  extension: radios           # límites de los radios
+  remuestreo_cobertura: near  # vecino más cercano (la cobertura es categórica)
 
 cobertura:
   insumo: mapbiomas
-  codigo_nodata: 0            # C2 3.4: 0 es no habitable y también NoData
-  clases:                     # mapeo_clases del 22/09/2026 (C2 3.3)
+  codigo_nodata: 0            # 0 es «sin dato / fuera del área» y se trata como no habitable
+  clases:                     # clase MapBiomas → metacategoría (no_habitable | urbano | no_urbano)
     - {clase: 0,  descripcion: "NO DATA / FUERA DEL AREA",               meta: no_habitable}
     - {clase: 1,  descripcion: "Bosques",                                 meta: no_urbano}
     - {clase: 2,  descripcion: "Silvicultura",                            meta: no_urbano}
@@ -52,7 +52,7 @@ cobertura:
     - {clase: 4,  descripcion: "Mosaicos de arbustos y herbáceas",        meta: no_urbano}
     - {clase: 5,  descripcion: "Herbáceas",                               meta: no_urbano}
     - {clase: 6,  descripcion: "Cultivos y pasturas",                     meta: no_urbano}
-    - {clase: 7,  descripcion: "Humedales",                               meta: no_urbano}     # criterio acordado
+    - {clase: 7,  descripcion: "Humedales",                               meta: no_urbano}
     - {clase: 8,  descripcion: "Áreas Urbanas",                           meta: urbano}
     - {clase: 9,  descripcion: "Hielo en superficie y nieve permanente",  meta: no_habitable}
     - {clase: 10, descripcion: "Otras áreas no vegetadas",                meta: no_habitable}
@@ -60,13 +60,13 @@ cobertura:
     - {clase: 12, descripcion: "No observado",                            meta: no_habitable}
 
 dasimetria:
-  campo_ambito: ambito        # tipo de radio del censo: Urbano, Mixto, Rural
+  campo_ambito: ambito        # tipo de radio en la tabla censal: Urbano, Mixto, Rural
   ambitos: [Urbano, Mixto, Rural]
   ponderadores:
-    normalizar_por: Urbano    # C2 4.2: mediana del ámbito / mediana urbana
-    peso_urbano: complemento  # C2 4.2: píxel urbano = 1 − r en radios mixtos y rurales
+    normalizar_por: Urbano    # peso del píxel no urbano = mediana de densidad del ámbito / mediana urbana, por región
+    peso_urbano: complemento  # peso del píxel urbano = 1 − peso no urbano
   producto_poblacion: poblacion_dasimetrica
-  variables:                  # C2 7.1 y 7.8: población del píxel × (variable / población del radio)
+  variables:                  # raster de cada variable = población del píxel × (variable / población del radio)
     - {producto: nbi,                 numerador: nbi_total}
     - {producto: agua_red,            numerador: agua_red_total}
     - {producto: pobla_mujer,         numerador: pobla_mujer}
@@ -86,31 +86,31 @@ dasimetria:
     - {producto: nbi_urbana,          numerador: nbi_urbana}
     - {producto: nbi_rural,           numerador: nbi_rural}
 
-cruce:                        # C3: capa de tierras degradadas × población
+cruce:                        # población × tierras degradadas
   insumo: degradacion
-  banda: 1                    # C3 lee la banda 1 (el archivo de 2022 tiene 2 bandas)
-  clases:                     # C3 celda 5 (codebook del mail del 07/09/2026)
-    - {clase: 0, etiqueta: "Sin datos",    binario: null}
+  banda: 1                    # el archivo tiene 2 bandas; se usa la 1
+  clases:
+    - {clase: 0, etiqueta: "Sin datos",    binario: null}           # no entra en el binario
     - {clase: 1, etiqueta: "Degradada",    binario: degradada}
     - {clase: 2, etiqueta: "No degradada", binario: no_degradada}   # estable
     - {clase: 3, etiqueta: "No degradada", binario: no_degradada}   # mejora
     - {clase: 9, etiqueta: "No degradada", binario: no_degradada}   # estable
   grupo_expuesto: degradada
-  ambito_reporte: {Urbano: Urbano, Mixto: Rural, Rural: Rural}      # C3 8.5: Mixto se informa como Rural
+  ambito_reporte: {Urbano: Urbano, Mixto: Rural, Rural: Rural}      # los radios mixtos se informan como rurales
   variables: [poblacion_dasimetrica, nbi, agua_red, pobla_varon, pobla_mujer,
-              nbi_varon, nbi_mujer, agua_red_varon, agua_red_mujer]  # las 9 del C3 celda 7
+              nbi_varon, nbi_mujer, agua_red_varon, agua_red_mujer]
   derivadas:
-    - {nombre: agua_sin_red, total: poblacion_dasimetrica, resta: agua_red}  # C3 celda 8
-  rasters_por_grupo: []       # PRAIS 2026: los rasters en TD salieron del C4 (otra grilla); propuesto: [degradada]
+    - {nombre: agua_sin_red, total: poblacion_dasimetrica, resta: agua_red}
+  rasters_por_grupo: []       # rasters de cada variable en tierras degradadas: no se generan en esta aplicación
 
-publicacion:                  # C5: reproyección a la grilla del MapBiomas (EPSG:4326) con suma
+publicacion:                  # capas de entrega: grilla de la cobertura (EPSG:4326), remuestreo por suma
   grilla_referencia: mapbiomas
   remuestreo: sum
-  bloque: 1024                # C5 BLOCK_SIZE
+  bloque: 1024
   compresion: deflate
-  tolerancia_masa_pct: 0.001  # C5: tolerancia del lote (advertencia)
-  plantilla_nombre: "{nombre}_100m_wgs84_{anio}.tif"   # nombres de la plataforma (capas nacionales)
-  productos:                  # producto de la etapa 3: nombre de entrega
+  tolerancia_masa_pct: 0.001  # diferencia de suma admitida (advertencia)
+  plantilla_nombre: "{nombre}_100m_wgs84_{anio}.tif"
+  productos:                  # producto → nombre de la capa en la plataforma del ONDTyD
     poblacion_dasimetrica: OE2-3.Pob_dasim
     pobla_mujer:           OE2-3.Pob_dasim_fem
     pobla_varon:           OE2-3.Pob_dasim_mas
@@ -127,11 +127,11 @@ publicacion:                  # C5: reproyección a la grilla del MapBiomas (EPS
     agua_red_urbana:       OE2-2.Pob_dasim_agua-urb
     agua_red_rural:        OE2-2.Pob_dasim_agua-rur
 
-tablas:                       # etapa 6: indicadores país y TD
+tablas:                       # indicadores país y tierras degradadas (TD)
   variable_poblacion: poblacion
-  urbano_rural:               # persona: urbano/rural del censo; radio: ámbito del radio (cruce.ambito_reporte)
-    pais: persona             # informe PRAIS 2026: columnas "Total país" con urbano/rural del censo
-    td: radio                 # informe PRAIS 2026: columnas TD con el ámbito del radio (C3 8.5, Mixto → Rural)
+  urbano_rural:               # persona: urbano/rural del censo | radio: tipo de radio (cruce.ambito_reporte)
+    pais: persona
+    td: radio
   variables:                  # campos de la tabla censal (país) y productos del cruce (TD) por grupo
     poblacion:
       censo: {total: pobla_total, mujer: pobla_mujer, varon: pobla_varon, urbano: pobla_total_urbana, rural: pobla_total_rural}
@@ -142,19 +142,19 @@ tablas:                       # etapa 6: indicadores país y TD
     agua_red:
       censo: {total: agua_red_total, mujer: agua_red_mujer, varon: agua_red_varon, urbano: agua_red_urbana, rural: agua_red_rural}
       td:    {total: agua_red, mujer: agua_red_mujer, varon: agua_red_varon, urbano: agua_red_urbana, rural: agua_red_rural}
-  salidas:                    # una tabla por entrada; la fórmula vale para todas sus filas (CNULD, manual PRAIS 2026)
-    - {nombre: OE2-1_nbi,                 variable: nbi,       por: grupos,   formula: incidencia}   # SO2-1 (informe: Tabla 6)
-    - {nombre: OE2-1_nbi_regiones,        variable: nbi,       por: regiones, formula: incidencia, grupos: [total, urbano, rural]}   # Tabla 7
-    - {nombre: OE2-2_agua,                variable: agua_red,  por: grupos,   formula: incidencia}   # SO2-2 (Tabla 8)
-    - {nombre: OE2-2_agua_regiones,       variable: agua_red,  por: regiones, formula: incidencia, grupos: [total, urbano, rural]}   # Tabla 9
-    - {nombre: OE2-3_poblacion,           variable: poblacion, por: grupos,   formula: exposicion}   # SO2-3 (Tabla 10)
-    - {nombre: OE2-3_poblacion_regiones,  variable: poblacion, por: regiones, formula: exposicion, grupos: [total, mujer, varon]}   # Tabla 11
+  salidas:                    # una tabla por indicador de la CNULD; la fórmula vale para todas sus filas
+    - {nombre: OE2-1_nbi,                 variable: nbi,       por: grupos,   formula: incidencia}   # SO2-1
+    - {nombre: OE2-1_nbi_regiones,        variable: nbi,       por: regiones, formula: incidencia, grupos: [total, urbano, rural]}
+    - {nombre: OE2-2_agua,                variable: agua_red,  por: grupos,   formula: incidencia}   # SO2-2
+    - {nombre: OE2-2_agua_regiones,       variable: agua_red,  por: regiones, formula: incidencia, grupos: [total, urbano, rural]}
+    - {nombre: OE2-3_poblacion,           variable: poblacion, por: grupos,   formula: exposicion}   # SO2-3
+    - {nombre: OE2-3_poblacion_regiones,  variable: poblacion, por: regiones, formula: exposicion, grupos: [total, mujer, varon]}
 
 rendimiento:
   filas_por_bloque: 512       # no cambia resultados
 
 referencia:
-  poblacion_integrada: 45618784   # pipeline.log de la ejecución final
+  poblacion_integrada: 45618784    # población de la tabla censal en radios con cartografía
 
 controles:
   modo: detener               # detener | advertir
@@ -163,15 +163,15 @@ controles:
   tolerancia_radio_personas: 0.5
   consistencia_bloqueante: true
 
-resultados_esperados:         # no bloqueante: verifica la reproducción de la ejecución del 22/09/2026
+resultados_esperados:         # cifras oficiales del PRAIS 2026 producidas con esta configuración (no bloqueante)
   radios:
     total: 66421
   grilla:
-    ancho: 21003                 # C5: grilla 5347 del C2 final
+    ancho: 21003
     alto: 47151
-  poblacion_raster: 45618783.995  # suma de poblacion_dasimetrica_2022.tif reproducido el 26/10/2026
-  cruce:                        # C3 2022 del 22/09 (indicadores_pct_2022.csv) = informe, Tabla 6
+  poblacion_raster: 45618783.995
+  cruce:                      # población y personas con NBI en tierras degradadas
     poblacion_dasimetrica: 5665133
     nbi: 712654
-  publicacion:                  # C5 reproducido el 26/10/2026 (pipeline.md, E7) = plataforma
+  publicacion:                # población en la capa publicada (EPSG:4326)
     poblacion_dasimetrica: 45618853.880

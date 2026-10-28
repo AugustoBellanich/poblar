@@ -28,7 +28,7 @@ separado para el país y para TD:
 * ``persona``: población urbana o rural según el censo (campos ``*_urbana`` y
   ``*_rural``; en TD, los productos dasimétricos de esas variables);
 * ``radio``: ámbito del radio (con la agrupación de ``cruce.ambito_reporte``),
-  aplicado a la variable total. Es lo que usó el C3 para TD.
+  aplicado a la variable total.
 
 Productos en ``6_tablas/``: ``indicadores.csv`` (formato largo, con los tres
 porcentajes) y una tabla por cada entrada de ``tablas.salidas``.
@@ -193,38 +193,3 @@ def unir_periodos(carpetas: dict[int, str | Path], salida: str | Path) -> dict[s
         u.to_csv(salida / f"{nombre}.csv", index=False, encoding="utf-8")
         out[nombre] = u
     return out
-
-
-def comparar_informe(carpetas: dict[int, str | Path], referencia: str | Path) -> pd.DataFrame:
-    """Compara cada cifra de las tablas del informe con poblar y dice qué fórmula reproduce el porcentaje.
-
-    Args:
-        carpetas: ``{año: carpeta de la ejecución}``.
-        referencia: CSV con las cifras publicadas (tabla, anio, ambito, region, variable, grupo, n, pct).
-
-    Returns:
-        Una fila por cifra del informe: n publicado y de poblar, diferencia, porcentaje publicado,
-        los tres porcentajes de poblar y cuál coincide (redondeado a un decimal).
-    """
-    ref = pd.read_csv(referencia)
-    filas = []
-    for anio, c in carpetas.items():
-        ind = pd.read_csv(Path(c) / ETAPA / "indicadores.csv").assign(anio=anio)
-        filas.append(ind)
-    ind = pd.concat(filas, ignore_index=True)
-    m = ref.merge(ind, on=["anio", "ambito", "region", "variable", "grupo"], how="left",
-                  suffixes=("_informe", "_poblar"))
-    m["dif_n"] = m["n_poblar"] - m["n_informe"]
-
-    def cual(f: pd.Series) -> str:
-        if pd.isna(f["pct"]):
-            return ""
-        ok = [k for k in ("incidencia", "exposicion", "composicion")
-              if pd.notna(f[k]) and abs(round(f[k], 1) - f["pct"]) <= 0.051]
-        return ", ".join(ok) if ok else "ninguna"
-
-    m["formula_que_coincide"] = m.apply(cual, axis=1)
-    cols = ["tabla", "anio", "ambito", "region", "variable", "grupo", "n_informe", "n_poblar", "dif_n",
-            "pct", "incidencia", "exposicion", "composicion", "formula_que_coincide", "linea"]
-    return m[cols].rename(columns={"pct": "pct_informe"}).round(
-        {"n_poblar": 1, "dif_n": 1, "incidencia": 2, "exposicion": 2, "composicion": 2})

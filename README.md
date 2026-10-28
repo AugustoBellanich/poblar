@@ -1,46 +1,71 @@
 # poblar
 
-Distribuye datos censales (población, sexo, ámbito, NBI, agua de red) desde los radios censales a una grilla, usando la cobertura del suelo, y los cruza con capas temáticas (por ejemplo, degradación de tierras). Cada ejecución registra qué insumos se usaron, con qué criterios y qué controles cumplió.
+Calcula la **población expuesta a la degradación de tierras** a partir de un censo por radio, una cobertura del suelo y un mapa de degradación. Produce los indicadores del Objetivo Estratégico 2 de la CNULD (SO2-1 pobreza, SO2-2 agua, SO2-3 población expuesta) como rasters y tablas, con cada criterio escrito en un archivo de configuración y cada paso controlado y registrado.
 
-Primera aplicación: **OE2 del Informe Nacional PRAIS 2026** (CNULD, ONDTyD). Ver [`aplicaciones/prais2026/`](aplicaciones/prais2026/).
+Se desarrolló para el OE2 del Informe Nacional PRAIS 2026 de la Argentina (ONDTyD). La configuración de esa aplicación está en [`aplicaciones/prais2026/`](aplicaciones/prais2026/); con otros insumos (otro censo, otra cobertura, otro mapa de degradación) se arma una configuración nueva ([guía](docs/nueva_aplicacion.md)).
 
-## Cómo funciona
+## Qué necesita y qué produce
 
-Una ejecución se define en un archivo de configuración YAML: insumos, criterios, grilla, tolerancias y productos. No hay valores implícitos en el código: si falta un criterio, la ejecución no comienza.
+| Entra | Sale |
+|---|---|
+| Tabla censal por radio: población total, por sexo y urbana/rural, NBI y agua de red | Rasters de población y de cada variable en una grilla métrica |
+| Cartografía de radios censales | Tablas de población por región, ámbito y categoría de degradación |
+| Cobertura del suelo (por ejemplo, MapBiomas) | Capas de entrega en la grilla de la cobertura (EPSG:4326) |
+| Mapa de degradación de tierras | Tablas de indicadores (país y tierras degradadas) con la fórmula de la CNULD |
+| Regiones de reporte | Controles, balance y sha256 de todo lo producido |
+
+## Cómo se usa
 
 ```python
 from poblar import ejecutar
-ejecutar("aplicaciones/prais2026/configs/2010.yaml", insumos="ruta/a/insumos", salida="ejecuciones")
+
+ejecutar("aplicaciones/prais2026/configs/2022.yaml",
+         insumos="ruta/a/insumos",       # carpeta con los archivos que nombra la configuración
+         salida="ejecuciones",           # se crea ejecuciones/<nombre>/
+         trabajo="/content/trabajo")     # opcional: procesar en disco local y copiar al final
 ```
 
 En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb).
 
-### Etapas
+Las etapas se pueden correr todas o algunas (`etapas=["cruce", "tablas"]`). Al repetir una ejecución con el mismo nombre se retoma la carpeta existente: lo ya producido se conserva y los controles de las etapas anteriores también.
 
-| # | Etapa | Estado |
+## Etapas
+
+| # | Etapa | Hace |
 |---|---|---|
-| 0 | Registro de insumos (hash, metadatos, controles) | ✔ |
-| 1 | Base de radios (tabla + cartografía, región, orden de rasterización) | ✔ |
-| 2 | Grilla de trabajo y cobertura del suelo | ✔ |
-| 3 | Mapeo dasimétrico | ✔ |
-| 4 | Cruce con capas temáticas | ✔ |
-| 5 | Publicación (rasters) | ✔ |
-| 6 | Tablas de indicadores (país y TD, fórmulas de la CNULD) | ✔ |
+| 0 | `insumos` | Verifica que existan, registra sha256 y metadatos, compara con el sha256 declarado |
+| 1 | `radios` | Une tabla y cartografía, repara geometrías, asigna región, ordena para rasterizar |
+| 2 | `grilla` | Lleva la cobertura a la grilla de trabajo y la reclasifica en urbano / no urbano / no habitable |
+| 3 | `dasimetria` | Distribuye la población de cada radio en sus píxeles habitables y genera un raster por variable |
+| 4 | `cruce` | Cruza la población con el mapa de degradación por región, ámbito y categoría |
+| 5 | `publicacion` | Reproyecta los rasters a la grilla de entrega conservando el total de personas |
+| 6 | `tablas` | Calcula los indicadores del país y de las tierras degradadas con la fórmula declarada |
 
-### Productos de cada ejecución
+Detalle de cada etapa: [`docs/metodo.md`](docs/metodo.md). Todas las claves de la configuración: [`docs/configuracion.md`](docs/configuracion.md).
+
+## Controles
+
+Cada etapa verifica lo que produce y lo deja en `controles.csv`: población conservada en total y por radio, sexo y ámbito que cierran con el total, clases de la cobertura y del mapa de degradación todas declaradas, grillas alineadas, masa conservada al reproyectar. Un control **bloqueante** que falla detiene la ejecución (o solo advierte, con `controles.modo: advertir`); los no bloqueantes quedan como advertencia. `resultados_esperados` permite fijar cifras conocidas (por ejemplo, las oficiales de una aplicación) y avisa si una ejecución deja de reproducirlas.
+
+## Productos de una ejecución
 
 ```
 ejecuciones/<nombre>/
   config.yaml, config_original.yaml   configuración ejecutada
-  entorno.txt                         versiones de Python, librerías y GDAL
-  0_insumos/insumos.csv               sha256 y metadatos de cada insumo
-  1_radios/radios.parquet             radios listos para la grilla
-  1_radios/*.csv                      radios sin cartografía, duplicados, sin intersección, fuera de región
-  balance.csv                         qué entra y qué sale de cada paso
-  controles.csv                       cada control, con su resultado
-  manifiesto.csv                      sha256 de todos los productos
+  entorno.txt                         versiones de Python, librerías, GDAL y commit de poblar
+  controles.csv, balance.csv          controles y conteos de cada paso
+  manifiesto.csv                      sha256 de todos los archivos
   pipeline.log
+  0_insumos/   insumos.csv
+  1_radios/    radios.parquet y radios descartados o reasignados (CSV)
+  2_grilla/    cobertura.tif (metacategorías), grilla.json
+  3_dasimetria/ poblacion_dasimetrica_<año>.tif, <variable>_dasimetrico_<año>.tif, ponderadores.csv, contingencias.csv
+  4_cruce/     cruce_largo.csv, cruce_binario.csv, cruce_ancho.csv, resumen_expuesta.csv
+  5_publicacion/ capas de entrega y publicacion.csv
+  6_tablas/    indicadores.csv y una tabla por indicador
 ```
+
+Con dos años ejecutados, `poblar.tablas.unir_periodos` arma las tablas con una columna por período, y `poblar.verificar.comparar_raster` compara dos rasters píxel por píxel (por ejemplo, la misma capa con dos configuraciones).
 
 ## Instalación
 
@@ -48,29 +73,19 @@ ejecuciones/<nombre>/
 pip install "git+https://github.com/AugustoBellanich/poblar@main"
 ```
 
-Desarrollo y pruebas:
+Requiere Python 3.10 o posterior y las herramientas de línea de comandos de GDAL (`gdalwarp`, `gdal_rasterize`; en Colab y Ubuntu: `apt-get install gdal-bin`).
+
+Desarrollo y pruebas (caso sintético con resultado conocido):
 
 ```bash
 pip install -e ".[dev]"
 python -m pytest -q
 ```
 
-Las pruebas usan un caso sintético (cinco radios, dos regiones) con resultado conocido de antemano.
-
-## Relación con otras herramientas
-
-[`tobler`](https://pysal.org/tobler/stable/) (PySAL) implementa interpolación areal y mapeo dasimétrico general. `poblar` implementa el método específico del OE2 (ponderadores por región y ámbito, contingencias, cruce con degradación y publicación) y su trazabilidad.
-
 ## Datos
 
-Los datos no se guardan en este repositorio: las configuraciones registran nombre, origen y sha256 de cada insumo.
-
-## Documentación
-
-- [`docs/guia_de_estilo.md`](docs/guia_de_estilo.md): glosario y convenciones de redacción.
-- [`docs/decisiones.md`](docs/decisiones.md): registro de decisiones de diseño.
-- [`docs/esquema_pipeline.html`](docs/esquema_pipeline.html): esquema del flujo completo.
+Los datos no se guardan en este repositorio. Cada configuración registra el nombre, el origen y el sha256 de sus insumos.
 
 ## Licencia
 
-[Apache 2.0](LICENSE). Motivos en [`docs/decisiones.md`](docs/decisiones.md#d-001--licencia-apache-20-27102026). La licencia cubre el código; los insumos conservan sus propias licencias.
+[Apache 2.0](LICENSE). La licencia cubre el código; los insumos conservan sus propias licencias. Autoría: [`AUTORES.md`](AUTORES.md).
