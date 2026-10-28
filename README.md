@@ -38,7 +38,7 @@ Solo hacen falta los insumos de las etapas que se quieran correr: sin mapa de de
 
 Para reproducir un período ya publicado, `registro=` agrega las huellas (sha256) de los insumos oficiales y las cifras esperadas: si un archivo no es el oficial, la ejecución se detiene; si una cifra no se reproduce, queda una advertencia. Ver [`aplicaciones/prais2026/`](aplicaciones/prais2026/).
 
-En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb).
+En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb) (formulario con el año y los archivos, informe y mapas al final).
 
 ## Etapas
 
@@ -64,6 +64,7 @@ Cada etapa verifica lo que produce y lo deja en `controles.csv`: población cons
 
 ```
 ejecuciones/<nombre>/
+  informe.html                        controles, cifras, mapas y tablas, para abrir en el navegador
   config.yaml                         configuración efectiva (método + año + insumos)
   metodo.yaml, registro.yaml          copias de los archivos usados
   entorno.txt                         versiones de Python, librerías, GDAL y commit de poblar
@@ -79,7 +80,7 @@ ejecuciones/<nombre>/
   6_tablas/    indicadores.csv y una tabla por indicador
 ```
 
-Con dos años ejecutados, `poblar.tablas.unir_periodos` arma las tablas con una columna por período, y `poblar.verificar.comparar_raster` compara dos rasters píxel por píxel (por ejemplo, la misma capa con dos configuraciones).
+Para mirar un producto en un cuaderno: `poblar.vista.mapa(carpeta, "expuesta", region="Chaco")`. Con dos años ejecutados, `poblar.tablas.unir_periodos` arma las tablas con una columna por período, y `poblar.verificar.comparar_raster` compara dos rasters píxel por píxel (por ejemplo, la misma capa con dos configuraciones).
 
 ## Instalación
 

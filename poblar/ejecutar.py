@@ -144,6 +144,13 @@ def ejecutar(
         raise
     finally:
         ejecucion.guardar_registros()
+        if cfgmod.obtener(cfg, "informe.generar", True):
+            try:
+                from poblar import informe
+
+                informe.generar(ejecucion.carpeta, mapas=bool(cfgmod.obtener(cfg, "informe.mapas", True)))
+            except Exception as e:  # noqa: BLE001 — el informe nunca detiene una ejecución
+                log.warning("No se pudo generar el informe: %s", e)
         ejecucion.manifiesto()
         if trabajo is not None:
             destino = Path(salida) / ejecucion.carpeta.name

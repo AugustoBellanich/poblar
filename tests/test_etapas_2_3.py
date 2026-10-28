@@ -425,3 +425,16 @@ def test_solo_los_insumos_necesarios(tmp_path: Path, insumos: Path) -> None:  # 
 
     registrados = set(pd.read_csv(e2.carpeta / "0_insumos" / "insumos.csv")["insumo"])
     assert {"tabla_censo", "radios", "regiones", "cobertura", "degradacion"} <= registrados
+
+
+def test_informe_y_vistas(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
+    from poblar import vista
+
+    metodo, rutas = _metodo_y_archivos(tmp_path, insumos)
+    e = ejecutar(metodo, anio=2010, insumos=rutas, salida=tmp_path / "ejecuciones")
+    informe = (e.carpeta / "informe.html").read_text(encoding="utf-8")
+    for texto in ("Controles", "Resultados", "Mapas", "data:image/png;base64", "Tablas de indicadores"):
+        assert texto in informe
+    assert {"poblacion", "degradacion", "expuesta", "cobertura"} <= set(vista.productos(e.carpeta))
+    fig = vista.mapa(e.carpeta, "nbi", ancho_px=50)
+    assert fig is not None

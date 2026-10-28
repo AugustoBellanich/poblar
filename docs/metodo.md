@@ -79,3 +79,15 @@ Urbano/rural se define por persona (campos urbana/rural del censo) o por tipo de
 
 - **Controles:** mujeres + varones = total y urbano + rural = total, en el país y en tierras degradadas; suma de regiones = nacional.
 - **Produce:** `indicadores.csv` (formato largo con los tres porcentajes) y una tabla por entrada de `tablas.salidas`, con la fórmula indicada.
+
+## Informe de la ejecución
+
+Al terminar (o al detenerse por un control), cada ejecución escribe `informe.html`, un archivo único que se abre en cualquier navegador:
+
+- **Controles:** cumplidos, advertencias y fallas bloqueantes, por etapa, con el detalle de los que no se cumplieron.
+- **Resultados:** población, NBI y agua sin red en tierras degradadas (nacional y por región) y las capas publicadas.
+- **Mapas de vista rápida:** población (personas por km², escala logarítmica), tierras degradadas y población en tierras degradadas, del país y de cada región. Se leen reducidos; son para revisar, no para publicar.
+- **Tablas de indicadores**, con la fórmula de cada una.
+- **Ejecución:** versión de poblar, Python y GDAL, e insumos con su sha256.
+
+Para regenerarlo sobre una ejecución existente: `poblar.informe.generar(carpeta)`. Para mirar un producto en un cuaderno: `poblar.vista.mapa(carpeta, "expuesta", region="Chaco")`; `poblar.vista.productos(carpeta)` lista los disponibles.
