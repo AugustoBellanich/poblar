@@ -59,3 +59,48 @@ logo("claro", "poblar.svg", lema=True)
 logo("oscuro", "poblar_oscuro.svg", lema=True)
 logo("claro", "isotipo.svg", con_texto=False)
 logo("oscuro", "isotipo_oscuro.svg", con_texto=False)
+
+
+def banner(salida, ancho=1200, alto=240):
+    """Banner horizontal (cuaderno de Colab, presentaciones): isologotipo a la izquierda y campo de píxeles a la derecha."""
+    import math
+    import random
+    c = dict(fondo="#f7f5f0", linea="#e6e0d4", alto="#4a2f7a", medio="#8a5cd6", bajo="#c49a5a", vacio="#ddd3c0",
+             texto="#1d1b18", suave="#6b665e")
+    celda = 26
+    iso = isotipo(64, (alto - 4 * celda) / 2, celda, c)
+    d, xfin = palabra("poblar", FUENTE, 104, 196, 136, tracking=-1.0)
+    d2, _ = palabra("población expuesta a la degradación de tierras", FUENTE.replace("SemiBold", "Medium"), 22, 199, 176, tracking=0.1)
+    d3, _ = palabra("censo por radio · cobertura del suelo · degradación → indicadores SO2 de la CNULD",
+                    FUENTE.replace("SemiBold", "Regular"), 14.5, 199, 204, tracking=0.2)
+    # Campo de píxeles: densidad alrededor de dos núcleos, se desvanece hacia la izquierda
+    random.seed(7)
+    paso, cuadros = 22, []
+    x_ini = 760
+    for x in range(x_ini, ancho + paso, paso):
+        for y in range(-paso, alto + paso, paso):
+            dist = min(math.hypot(x - 1000, y - 80), math.hypot(x - 1135, y - 185) * 1.25, math.hypot(x - 880, y - 175) * 1.8)
+            dens = max(0.0, 1 - dist / 170) + random.uniform(-0.1, 0.1)
+            if dens <= 0.05 and random.random() < 0.55:
+                dens = random.uniform(0.15, 0.4)   # tierra con poca gente
+            desv = min(1.0, (x - x_ini) / 220)
+            if dens <= 0.05:
+                lado, color = 3.0, c["vacio"]
+            else:
+                lado = 4 + 13 * min(dens, 1)
+                color = c["alto"] if dens > 0.72 else c["medio"] if dens > 0.42 else c["bajo"]
+            op = 0.9 * desv
+            cuadros.append(f'<rect x="{x - lado / 2:.1f}" y="{y - lado / 2:.1f}" width="{lado:.1f}" height="{lado:.1f}" '
+                           f'rx="{lado * 0.18:.1f}" fill="{color}" opacity="{op:.2f}"/>')
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {ancho} {alto}" width="{ancho}" height="{alto}" '
+           f'role="img" aria-label="poblar · población expuesta a la degradación de tierras">\n'
+           f'  <defs><clipPath id="m"><rect width="{ancho}" height="{alto}" rx="18"/></clipPath></defs>\n'
+           f'  <g clip-path="url(#m)">\n  <rect width="{ancho}" height="{alto}" fill="{c["fondo"]}"/>\n  '
+           + "\n  ".join(cuadros) + "\n  </g>\n"
+           f'  <rect x="0.5" y="0.5" width="{ancho - 1}" height="{alto - 1}" rx="18" fill="none" stroke="{c["linea"]}"/>\n'
+           f'  {iso}\n  <path d="{d}" fill="{c["texto"]}"/>\n  <path d="{d2}" fill="{c["suave"]}"/>\n'
+           f'  <path d="{d3}" fill="{c["suave"]}" opacity="0.85"/>\n</svg>\n')
+    open(salida, "w").write(svg)
+
+
+banner("banner.svg")
