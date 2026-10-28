@@ -501,3 +501,24 @@ def test_variar_metodo_y_etapas_afectadas(tmp_path: Path) -> None:
     assert etapas_afectadas(["tablas.urbano_rural.pais"]) == ["tablas"]
     assert etapas_afectadas(["grilla_trabajo.modo"]) == ["grilla", "dasimetria", "cruce", "publicacion", "tablas"]
     assert etapas_afectadas(["region.umbral_vecino_km"])[0] == "radios"
+
+
+def test_informe_explica_poblacion_fuera_de_region(tmp_path: Path) -> None:
+    import geopandas as gpd
+    import pandas as pd
+    from shapely.geometry import Point
+
+    from poblar.informe import _explicaciones
+
+    (tmp_path / "1_radios").mkdir()
+    (tmp_path / "config.yaml").write_text(yaml.safe_dump(
+        {"region": {"campo": "Reg", "etiqueta_fuera": "Fuera"}}), encoding="utf-8")
+    gpd.GeoDataFrame({"Reg": ["Norte", "Fuera", "Fuera"], "pobla_total": [100, 150, 57]},
+                     geometry=[Point(0, 0)] * 3, crs=5347).to_parquet(tmp_path / "1_radios" / "radios.parquet")
+    no = pd.DataFrame({"etapa": ["4_cruce", "5_publicacion"],
+                       "nombre": ["población no cruzada (sin radio o sin dato temático)",
+                                  "conservación de la masa: pobla_total_rural"],
+                       "detalle": ["207 personas", "-207"], "valor": [207.0, 1.0], "esperado": [1.0, 1.0]})
+    ex = _explicaciones(tmp_path, no)
+    assert "207 personas de los 2 radios de «Fuera»" in ex["4_cruce"]
+    assert "no se publican" in ex["5_publicacion"]

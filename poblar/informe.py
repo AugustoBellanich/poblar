@@ -151,6 +151,47 @@ def _detalle(texto: str) -> str:
     return f'<span class="{clase}" title="{html.escape(t, quote=True)}">{html.escape(mostrar)}</span>'
 
 
+def _poblacion_fuera(c: Path) -> tuple[str, int, float] | None:
+    """(etiqueta, radios, personas) de la región «fuera» de la ejecución, si tiene población."""
+    import yaml
+
+    try:
+        cfg = yaml.safe_load((c / "config.yaml").read_text(encoding="utf-8"))
+        campo, etiqueta = cfg["region"]["campo"], cfg["region"].get("etiqueta_fuera")
+        r = pd.read_parquet(c / "1_radios" / "radios.parquet", columns=[campo, "pobla_total"])
+    except Exception:  # noqa: BLE001 — la explicación es opcional
+        return None
+    sel = r[r[campo] == etiqueta]
+    if sel.empty or sel["pobla_total"].sum() <= 0:
+        return None
+    return str(etiqueta), len(sel), float(sel["pobla_total"].sum())
+
+
+def _explicaciones(c: Path, no: pd.DataFrame) -> dict[str, str]:
+    """Explicación de advertencias conocidas, por etapa, con cifras de la propia ejecución."""
+    out = {}
+    e3 = _explicacion_conservacion(c, no)
+    if e3 and not no[no["etapa"] == "3_dasimetria"]["detalle"].astype(str).str.contains("Esperable").any():
+        out["3_dasimetria"] = e3
+    fuera = _poblacion_fuera(c)
+    cruce = no[(no["etapa"] == "4_cruce") & no["nombre"].str.startswith("población no cruzada")]
+    if len(cruce):
+        valor = pd.to_numeric(cruce["valor"], errors="coerce").iloc[0]
+        if fuera and abs(valor - fuera[2]) <= 1:
+            out["4_cruce"] = (f"Son las {_num(fuera[2], 0)} personas de los {fuera[1]} radios de «{html.escape(fuera[0])}», "
+                              "que no tienen dato en el mapa de degradación (Antártida e islas quedan fuera de su extensión): no tienen categoría y no entran en el cruce.")
+        else:
+            out["4_cruce"] = ("Población en píxeles sin radio o sin dato en el mapa de degradación (por ejemplo, fuera de "
+                              "su extensión): no entra en ninguna categoría.")
+    pub = no[(no["etapa"] == "5_publicacion") & no["nombre"].str.startswith("conservación de la masa")]
+    if len(pub) and fuera:
+        out["5_publicacion"] = (f"Las {_num(fuera[2], 0)} personas de los {fuera[1]} radios de «{html.escape(fuera[0])}» "
+                                "quedan fuera de la extensión de la grilla de entrega y no se publican; por eso las capas "
+                                "con esa población (por ejemplo, la rural) pierden algo más que el resto. Las demás "
+                                "diferencias son del remuestreo en los bordes de los píxeles.")
+    return out
+
+
 def _numeros_es(texto: str) -> str:
     """Pasa los números con formato inglés de un texto (4,297,055.6) al formato local (4.297.055,6)."""
     import re
@@ -206,7 +247,7 @@ def _seccion_controles(c: Path) -> str:
                 f'<div class="tarjeta"><div class="n adv">{n.get("adv", 0)}</div><div class="l">advertencias</div></div>'
                 f'<div class="tarjeta"><div class="n falla">{n.get("falla", 0)}</div><div class="l">fallas bloqueantes</div></div></div>')
     no = ctrl[~ctrl["ok"]]
-    explica = _explicacion_conservacion(c, no) if len(no) else ""
+    explicaciones = _explicaciones(c, no) if len(no) else {}
     iconos = {"ok": "✓", "adv": "!", "falla": "✕"}
     tarjetas_etapa = []
     for etapa, g in ctrl.groupby("etapa", sort=True):
@@ -220,8 +261,9 @@ def _seccion_controles(c: Path) -> str:
         for _, f in g.sort_values("clase", key=lambda s: s.map({"falla": 0, "adv": 1, "ok": 2})).iterrows():
             items.append(f'<li><span class="{f["clase"]}">{iconos[f["clase"]]}</span><span>{html.escape(str(f["nombre"]))}</span>'
                          f'{_detalle(str(f["detalle"]))}</li>')
-        if etapa == "3_dasimetria" and explica and not g["detalle"].astype(str).str.contains("Esperable").any():
-            items.insert(int((g["clase"] != "ok").sum()), f'<li><span></span><div class="explica">{explica}</div></li>')
+        if etapa in explicaciones:
+            items.insert(int((g["clase"] != "ok").sum()),
+                         f'<li><span></span><div class="explica">{explicaciones[etapa]}</div></li>')
         abierta = " open" if cl_etapa != "ok" else ""
         tarjetas_etapa.append(
             f'<details class="etapa"{abierta}><summary><div class="cab"><span class="nombre">'
