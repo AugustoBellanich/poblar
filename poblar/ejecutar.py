@@ -10,33 +10,89 @@ from poblar.trazabilidad import ControlFallido, Ejecucion, log, sincronizar
 ETAPAS_DISPONIBLES = ["insumos", "radios", "grilla", "dasimetria", "cruce", "publicacion", "tablas"]
 
 
+DIRECTORIOS = {"radios": "1_radios", "grilla": "2_grilla", "dasimetria": "3_dasimetria",
+               "cruce": "4_cruce", "publicacion": "5_publicacion", "tablas": "6_tablas"}
+PREVIA = {"grilla": "radios", "dasimetria": "grilla", "cruce": "dasimetria",
+          "publicacion": "dasimetria", "tablas": "cruce"}
+
+
+def _es_config_completa(ruta: Path) -> bool:
+    """Una configuración en un solo archivo (método + año + insumos con rutas)."""
+    cfg = cfgmod._leer_yaml(ruta)
+    return "anio_censo" in cfg
+
+
+def _elegir_etapas(cfg: dict, pedidas: list[str] | str, previa: Path) -> list[str]:
+    """Etapas a correr. Con "todas", las que tienen sus insumos y lo que necesitan de la etapa anterior."""
+    dados = set(cfg.get("insumos") or {})
+    if pedidas != "todas":
+        lista = list(pedidas)
+        faltan = {e: [r for r in cfgmod.roles_necesarios(cfg, e) if r not in dados] for e in lista}
+        faltan = {e: f for e, f in faltan.items() if f}
+        if faltan:
+            detalle = "; ".join(f"'{e}' necesita {f}" for e, f in faltan.items())
+            raise cfgmod.ErrorConfig(f"Faltan insumos: {detalle}. Indicarlos en insumos=.")
+        return lista
+    lista = ["insumos"]
+    for etapa in ETAPAS_DISPONIBLES[1:]:
+        sin_definir = [c for c in cfgmod.OBLIGATORIAS.get(etapa, []) if cfgmod.obtener(cfg, c, None) is None]
+        if sin_definir:
+            log.info("Se omite la etapa '%s': el método no la define (falta %s)", etapa, sin_definir[0])
+            continue
+        tiene_insumos = all(r in dados for r in cfgmod.roles_necesarios(cfg, etapa))
+        antes = PREVIA.get(etapa)
+        tiene_previa = antes is None or antes in lista or (previa / DIRECTORIOS[antes]).exists()
+        if tiene_insumos and tiene_previa:
+            lista.append(etapa)
+        else:
+            motivo = ("faltan insumos " + str([r for r in cfgmod.roles_necesarios(cfg, etapa) if r not in dados])
+                      if not tiene_insumos else f"falta la etapa '{antes}'")
+            log.info("Se omite la etapa '%s': %s", etapa, motivo)
+    return lista
+
+
 def ejecutar(
-    ruta_config: str | Path,
-    insumos: str | Path | None = None,
+    metodo: str | Path,
+    anio: int | None = None,
+    insumos: dict | str | Path | None = None,
     salida: str | Path = "ejecuciones",
     etapas: list[str] | str = "todas",
     trabajo: str | Path | None = None,
+    registro: str | Path | None = None,
+    nombre: str | None = None,
 ) -> Ejecucion:
-    """Ejecuta las etapas pedidas y deja todo en ``<salida>/<nombre>/``.
+    """Ejecuta las etapas y deja todo en ``<salida>/<nombre>/``.
 
     Args:
-        ruta_config: Archivo YAML de configuración.
-        insumos: Carpeta base de los insumos (las rutas de la configuración son relativas a ella).
+        metodo: YAML con los criterios del método. (También acepta una configuración completa en un
+            solo archivo, con ``anio_censo`` e ``insumos``; entonces ``insumos`` es su carpeta base).
+        anio: Año o período de la ejecución.
+        insumos: ``{rol: ruta}`` con los archivos de esta ejecución, con cualquier nombre y en
+            cualquier carpeta. Roles: ``tabla_censo``, ``radios``, ``regiones``, ``cobertura``,
+            ``degradacion``; se pasan solo los que necesitan las etapas a correr. Junto a la ruta se
+            pueden dar datos del archivo: ``{"ruta": ..., "campo_codigo": ...}`` (radios),
+            ``{"ruta": ..., "banda": ...}`` (degradación), ``capa``, ``hoja``, ``sha256``.
         salida: Carpeta donde se crean las ejecuciones.
-        etapas: ``"todas"`` o lista con nombres de :data:`ETAPAS_DISPONIBLES`.
-        trabajo: Carpeta local donde se procesa (opcional). Al terminar, con o sin error, la
-            ejecución completa se copia a ``salida``. En Colab conviene un disco local
-            (``/content/trabajo``): escribir rasters grandes por bloques directamente en Drive es lento.
+        etapas: ``"todas"`` (las que tienen sus insumos) o lista con nombres de :data:`ETAPAS_DISPONIBLES`.
+        trabajo: Carpeta local donde se procesa (opcional); lo terminado se copia a ``salida``. En
+            Colab conviene ``/content/trabajo``: escribir rasters grandes directamente en Drive es lento.
+        registro: YAML opcional con los datos fijos de un período (sha256 de los insumos, cifras
+            esperadas). Ver ``aplicaciones/prais2026/periodos/``.
+        nombre: Nombre de la ejecución (por defecto ``<aplicacion>_<anio>``).
 
     Returns:
         La ejecución, con sus controles y su balance.
     """
-    lista = ETAPAS_DISPONIBLES if etapas == "todas" else list(etapas)
-    desconocidas = sorted(set(lista) - set(ETAPAS_DISPONIBLES))
-    if desconocidas:
-        raise ValueError(f"Etapas desconocidas: {desconocidas}. Disponibles: {ETAPAS_DISPONIBLES}")
+    if etapas != "todas":
+        desconocidas = sorted(set(etapas) - set(ETAPAS_DISPONIBLES))
+        if desconocidas:
+            raise ValueError(f"Etapas desconocidas: {desconocidas}. Disponibles: {ETAPAS_DISPONIBLES}")
 
-    cfg = cfgmod.cargar(ruta_config, insumos)
+    if _es_config_completa(Path(metodo)):
+        cfg = cfgmod.cargar(metodo, insumos if isinstance(insumos, (str, Path)) else None)
+    else:
+        cfg = cfgmod.armar(metodo, anio, insumos, registro, nombre)
+    lista = _elegir_etapas(cfg, etapas, Path(salida) / str(cfg["nombre"]))
     cfgmod.verificar(cfg, [e for e in lista if e in cfgmod.OBLIGATORIAS])
     if trabajo is not None:
         previa = Path(salida) / str(cfg["nombre"])

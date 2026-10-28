@@ -1,0 +1,49 @@
+# PRAIS 2026 — OE2 — período de referencia (censo 2010)
+# Datos fijos de la ejecución oficial: huella (sha256) de cada insumo y cifras publicadas.
+# Uso: ejecutar("aplicaciones/prais2026/metodo.yaml", registro="aplicaciones/prais2026/periodos/2010.yaml",
+#               insumos={"tabla_censo": ..., "radios": ..., ...})
+# Si un insumo no coincide con su huella, la ejecución se detiene; si una cifra no se reproduce,
+# queda una advertencia en controles.csv.
+
+anio: 2010
+nombre: prais2026_2010
+
+insumos:                      # archivo oficial de cada rol: nombre sugerido, huella y datos del archivo
+  tabla_censo:                # población por radio: total, sexo, urbana/rural, NBI y agua de red (Redatam, INDEC)
+    ruta: tabla_censo2010.xlsx
+    sha256: b84fdac064ee7b8c2424539f2e3d0ee513742b3aab0fe6f90c3db12037fd932d
+  radios:                     # cartografía de radios censales (CONICET, repositorio 11336/149711)
+    ruta: radios_2010.zip
+    campo_codigo: COD_2010
+    sha256: 464e9b4c265a27f46a48e0c5914ef4e833c14e8977b8f0c9c1eaad672f374baa
+  cobertura:                  # MapBiomas Argentina, colección PRAIS 2026, 2015, 100 m, EPSG:4326
+    ruta: MB_prais_2015_100m.tif
+    sha256: 35b861a146f98bf85de4c898f75a3ccd8086a8d8f16feed38aa858a3e5a87de1
+  degradacion:                # «Degradación de la tierra para el período de referencia (2000-2015)», OE1, EPSG:4326
+    ruta: degradacion_referencia_2010.tif
+    sha256: 7824aa2a38efc4a6ba38b182fa2737d613e262c8167e399d9235274c9800e903
+  regiones:                   # regiones PRAIS 2026
+    ruta: regiones_PRAIS.gpkg
+    sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
+
+referencia:
+  poblacion_integrada: 40114872    # población de la tabla censal en radios con cartografía
+
+resultados_esperados:         # cifras oficiales del PRAIS 2026 producidas con esta configuración (no bloqueante)
+  radios:
+    total: 52378
+    por_region:
+      Pampa: 33686
+      Chaco: 10842
+      "Altos Andes, Monte y Puna": 3255
+      Patagonia: 3020
+      "Selva Paranaense": 1573
+      "Fuera de Región (Antártida/Islas)": 2
+  grilla:
+    ancho: 22958
+    alto: 92392
+  poblacion_raster: 40114871.996
+  cruce:                      # población en tierras degradadas
+    poblacion_dasimetrica: 3808137
+  publicacion:                # población en la capa publicada (EPSG:4326)
+    poblacion_dasimetrica: 40114695.258

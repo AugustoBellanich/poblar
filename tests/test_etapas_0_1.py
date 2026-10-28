@@ -149,3 +149,17 @@ def test_falta_criterio_no_arranca(tmp_path: Path, insumos: Path) -> None:
     cfg = _config(tmp_path, **{"region.umbral_vecino_km": None})
     with pytest.raises(ErrorConfig):
         ejecutar(cfg, insumos=insumos, salida=tmp_path / "ejecuciones", etapas=ETAPAS_01)
+
+
+def test_aplicacion_prais2026_completa() -> None:
+    """El método y los registros del PRAIS 2026 arman una configuración válida para todas las etapas."""
+    from poblar.config import OBLIGATORIAS, armar, verificar
+
+    raiz = Path(__file__).resolve().parents[1] / "aplicaciones" / "prais2026"
+    for anio, codigo in ((2010, "COD_2010"), (2022, "COD_2022")):
+        cfg = armar(raiz / "metodo.yaml", registro=raiz / "periodos" / f"{anio}.yaml", insumos=Path("/datos"))
+        verificar(cfg, list(OBLIGATORIAS))
+        assert cfg["nombre"] == f"prais2026_{anio}" and cfg["anio_censo"] == anio
+        assert cfg["radios"]["campo_codigo_mapa"] == codigo
+        assert set(cfg["insumos"]) == {"tabla_censo", "radios", "regiones", "cobertura", "degradacion"}
+        assert all(v["sha256"] for v in cfg["insumos"].values())

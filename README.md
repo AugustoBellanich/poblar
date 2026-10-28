@@ -2,7 +2,7 @@
 
 Calcula la **población expuesta a la degradación de tierras** a partir de un censo por radio, una cobertura del suelo y un mapa de degradación. Produce los indicadores del Objetivo Estratégico 2 de la CNULD (SO2-1 pobreza, SO2-2 agua, SO2-3 población expuesta) como rasters y tablas, con cada criterio escrito en un archivo de configuración y cada paso controlado y registrado.
 
-Se desarrolló para el OE2 del Informe Nacional PRAIS 2026 de la Argentina (ONDTyD). La configuración de esa aplicación está en [`aplicaciones/prais2026/`](aplicaciones/prais2026/); con otros insumos (otro censo, otra cobertura, otro mapa de degradación) se arma una configuración nueva ([guía](docs/nueva_aplicacion.md)).
+Se desarrolló para el OE2 del Informe Nacional PRAIS 2026 de la Argentina (ONDTyD). El método de esa aplicación está en [`aplicaciones/prais2026/`](aplicaciones/prais2026/) y sirve para otros períodos con solo indicar el año y los archivos; con otro tipo de insumos (otra cobertura, otro mapa de degradación, otro país) se adapta el método ([guía](docs/nueva_aplicacion.md)).
 
 ## Qué necesita y qué produce
 
@@ -16,24 +16,35 @@ Se desarrolló para el OE2 del Informe Nacional PRAIS 2026 de la Argentina (ONDT
 
 ## Cómo se usa
 
+Una ejecución se arma con tres cosas: el **método** (un YAML con los criterios, igual para todos los períodos), el **año** y los **insumos**, cada uno con su ruta, se llame como se llame:
+
 ```python
 from poblar import ejecutar
 
-ejecutar("aplicaciones/prais2026/configs/2022.yaml",
-         insumos="ruta/a/insumos",       # carpeta con los archivos que nombra la configuración
-         salida="ejecuciones",           # se crea ejecuciones/<nombre>/
-         trabajo="/content/trabajo")     # opcional: procesar en disco local y copiar al final
+ejecutar("aplicaciones/prais2026/metodo.yaml",
+         anio=2030,
+         insumos={
+             "tabla_censo": "datos/censo_2030_por_radio.xlsx",
+             "radios":      "datos/radios_2030.gpkg",
+             "regiones":    "datos/regiones.gpkg",
+             "cobertura":   "datos/cobertura_2029.tif",
+             "degradacion": "datos/degradacion_2030.tif",
+         },
+         salida="ejecuciones",            # se crea ejecuciones/<aplicacion>_<año>/
+         trabajo="/content/trabajo")      # opcional: procesar en disco local y copiar al final
 ```
 
-En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb).
+Solo hacen falta los insumos de las etapas que se quieran correr: sin mapa de degradación, se producen los rasters de población y sus capas publicadas, y se omiten el cruce y las tablas (`pipeline.log` dice por qué). Al repetir una ejecución con el mismo nombre se retoma la carpeta existente; por ejemplo, para agregar después el cruce alcanza con `insumos={"degradacion": ...}`.
 
-Las etapas se pueden correr todas o algunas (`etapas=["cruce", "tablas"]`). Al repetir una ejecución con el mismo nombre se retoma la carpeta existente: lo ya producido se conserva y los controles de las etapas anteriores también.
+Para reproducir un período ya publicado, `registro=` agrega las huellas (sha256) de los insumos oficiales y las cifras esperadas: si un archivo no es el oficial, la ejecución se detiene; si una cifra no se reproduce, queda una advertencia. Ver [`aplicaciones/prais2026/`](aplicaciones/prais2026/).
+
+En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb).
 
 ## Etapas
 
 | # | Etapa | Hace |
 |---|---|---|
-| 0 | `insumos` | Verifica que existan, registra sha256 y metadatos, compara con el sha256 declarado |
+| 0 | `insumos` | Verifica que existan, registra sha256 y metadatos, compara con el sha256 del registro |
 | 1 | `radios` | Une tabla y cartografía, repara geometrías, asigna región, ordena para rasterizar |
 | 2 | `grilla` | Lleva la cobertura a la grilla de trabajo y la reclasifica en urbano / no urbano / no habitable |
 | 3 | `dasimetria` | Distribuye la población de cada radio en sus píxeles habitables y genera un raster por variable |
@@ -41,17 +52,20 @@ Las etapas se pueden correr todas o algunas (`etapas=["cruce", "tablas"]`). Al r
 | 5 | `publicacion` | Reproyecta los rasters a la grilla de entrega conservando el total de personas |
 | 6 | `tablas` | Calcula los indicadores del país y de las tierras degradadas con la fórmula declarada |
 
-Detalle de cada etapa: [`docs/metodo.md`](docs/metodo.md). Todas las claves de la configuración: [`docs/configuracion.md`](docs/configuracion.md).
+Insumos que necesita cada etapa: `radios` → tabla censal, radios y regiones; `grilla` y `publicacion` → cobertura; `cruce` → mapa de degradación.
+
+Detalle de cada etapa: [`docs/metodo.md`](docs/metodo.md). Todas las claves del método y de los insumos: [`docs/configuracion.md`](docs/configuracion.md).
 
 ## Controles
 
-Cada etapa verifica lo que produce y lo deja en `controles.csv`: población conservada en total y por radio, sexo y ámbito que cierran con el total, clases de la cobertura y del mapa de degradación todas declaradas, grillas alineadas, masa conservada al reproyectar. Un control **bloqueante** que falla detiene la ejecución (o solo advierte, con `controles.modo: advertir`); los no bloqueantes quedan como advertencia. `resultados_esperados` permite fijar cifras conocidas (por ejemplo, las oficiales de una aplicación) y avisa si una ejecución deja de reproducirlas.
+Cada etapa verifica lo que produce y lo deja en `controles.csv`: población conservada en total y por radio, sexo y ámbito que cierran con el total, clases de la cobertura y del mapa de degradación todas declaradas, grillas alineadas, masa conservada al reproyectar. Un control **bloqueante** que falla detiene la ejecución (o solo advierte, con `controles.modo: advertir`); los no bloqueantes quedan como advertencia. Un registro de período (`registro=`) permite fijar cifras conocidas, por ejemplo las oficiales, y avisa si una ejecución deja de reproducirlas.
 
 ## Productos de una ejecución
 
 ```
 ejecuciones/<nombre>/
-  config.yaml, config_original.yaml   configuración ejecutada
+  config.yaml                         configuración efectiva (método + año + insumos)
+  metodo.yaml, registro.yaml          copias de los archivos usados
   entorno.txt                         versiones de Python, librerías, GDAL y commit de poblar
   controles.csv, balance.csv          controles y conteos de cada paso
   manifiesto.csv                      sha256 de todos los archivos

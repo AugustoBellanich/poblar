@@ -1,10 +1,12 @@
 # Método
 
-Qué hace cada etapa, qué controla y qué produce. Las claves de configuración citadas están en [`configuracion.md`](configuracion.md).
+Qué hace cada etapa, qué controla y qué produce. Las claves citadas están en [`configuracion.md`](configuracion.md).
+
+Con `etapas="todas"` se corren las etapas que el método define, que tienen sus insumos y cuya etapa anterior se corre o ya está en la carpeta de la ejecución. Las omitidas quedan en `pipeline.log` con el motivo.
 
 ## 0. Insumos (`insumos`)
 
-Para cada insumo declarado en `insumos`: verifica que exista, calcula su sha256 y lo compara con el declarado (si hay uno), y registra metadatos (filas y columnas de tablas; registros, CRS y campos de vectores; tamaño, resolución, CRS y nodata de rasters).
+Para cada insumo indicado: verifica que exista, calcula su sha256 y lo compara con la huella del registro o la indicada en el insumo (si hay una), y registra metadatos (filas y columnas de tablas; registros, CRS y campos de vectores; tamaño, resolución, CRS y nodata de rasters).
 
 - **Controles:** el archivo existe; el sha256 coincide; los vectores no están vacíos (cuenta registros reales, no solo los metadatos).
 - **Produce:** `0_insumos/insumos.csv` y `insumos.json`.
@@ -12,7 +14,7 @@ Para cada insumo declarado en `insumos`: verifica que exista, calcula su sha256 
 ## 1. Radios (`radios`)
 
 1. Lee la tabla censal (código de radio como texto de 9 dígitos) y la cartografía.
-2. Une tabla y mapa por código de radio (`radios.union`: `inner` o `left`). Los radios que están solo en la tabla o solo en el mapa quedan registrados.
+2. Identifica el campo de código de radio en la cartografía (el indicado, o el que coincide con más códigos de la tabla) y une tabla y mapa por código (`radios.union`: `inner` o `left`). Los radios que están solo en la tabla o solo en el mapa quedan registrados.
 3. Quita duplicados por código, descarta geometrías vacías, pasa al CRS de trabajo y repara geometrías inválidas.
 4. Asigna región por área mayoritaria de intersección. Un radio sin intersección va a la región más cercana si está a `region.umbral_vecino_km` o menos; si no, a `region.etiqueta_fuera` (o se excluye, con `region.excluir_fuera: true`).
 5. Ordena los radios por área descendente y les asigna `raster_id`: al rasterizar, el último radio que toca un píxel se lo queda, así los radios chicos no desaparecen bajo los grandes.

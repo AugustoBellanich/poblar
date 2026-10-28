@@ -367,3 +367,61 @@ def test_tablas_formulas_y_union_de_periodos(tmp_path: Path, insumos: Path) -> N
     u = unir_periodos({2010: e.carpeta, 2022: e.carpeta}, tmp_path / "unidas")
     assert {"n_td_2010", "pct_td_2022"} <= set(u["nbi"].columns)
 
+
+
+def _metodo_y_archivos(tmp_path: Path, insumos: Path) -> tuple[Path, dict]:  # noqa: F811
+    """Separa la configuración de prueba en método (YAML sin rutas ni año) e insumos con nombres libres."""
+    import shutil as sh
+
+    cfg = yaml.safe_load(_con_cruce(tmp_path, insumos).read_text(encoding="utf-8"))
+    otra = tmp_path / "mis_datos"
+    otra.mkdir()
+    archivos = {"tabla_censo": "censo.xlsx", "radios": "radios_2010.zip", "regiones": "regiones.gpkg",
+                "mapbiomas": "cobertura.tif", "degradacion": "tematica.tif"}
+    rutas = {}
+    for rol, original in archivos.items():
+        nuevo = otra / f"cualquier_nombre_{rol}{Path(original).suffix}"
+        sh.copy(insumos / original if (insumos / original).exists() else insumos / cfg["insumos"][rol]["ruta"],
+                nuevo)
+        rutas["cobertura" if rol == "mapbiomas" else rol] = str(nuevo)
+    for clave in ("insumos", "anio_censo", "nombre"):
+        cfg.pop(clave, None)
+    cfg.pop("radios", None)
+    cfg["radios"] = {"union": "inner", "id_desde": "tabla"}       # sin campo de código: se detecta
+    cfg["aplicacion"] = "prueba"
+    cfg["cobertura"].pop("insumo", None)
+    cfg["cruce"].pop("insumo", None)
+    metodo = tmp_path / "metodo.yaml"
+    metodo.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    return metodo, rutas
+
+
+def test_insumos_por_rol_con_cualquier_nombre(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
+    metodo, rutas = _metodo_y_archivos(tmp_path, insumos)
+    e = ejecutar(metodo, anio=2010, insumos=rutas, salida=tmp_path / "ejecuciones")
+    assert e.carpeta.name == "prueba_2010"
+    assert (e.carpeta / "4_cruce" / "cruce_largo.csv").exists()
+    assert _suma(e.carpeta / "3_dasimetria" / "poblacion_dasimetrica_2010.tif") == pytest.approx(165, abs=1e-3)
+    assert (e.carpeta / "metodo.yaml").exists()
+
+
+def test_solo_los_insumos_necesarios(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
+    from poblar.config import ErrorConfig
+
+    metodo, rutas = _metodo_y_archivos(tmp_path, insumos)
+    sin_dt = {k: v for k, v in rutas.items() if k != "degradacion"}
+    e = ejecutar(metodo, anio=2010, insumos=sin_dt, salida=tmp_path / "ejecuciones")
+    assert (e.carpeta / "3_dasimetria").exists()
+    assert not (e.carpeta / "4_cruce").exists()          # sin mapa de degradación no hay cruce
+    with pytest.raises(ErrorConfig, match="degradacion"):
+        ejecutar(metodo, anio=2010, insumos=sin_dt, salida=tmp_path / "ejecuciones", etapas=["cruce"])
+    with pytest.raises(ErrorConfig, match="desconocidos"):
+        ejecutar(metodo, anio=2010, insumos={**rutas, "censo": "x"}, salida=tmp_path / "otra")
+    # retomar: solo el mapa de degradación y las etapas que faltan
+    e2 = ejecutar(metodo, anio=2010, insumos={"degradacion": rutas["degradacion"]},
+                  salida=tmp_path / "ejecuciones")
+    assert (e2.carpeta / "4_cruce" / "cruce_largo.csv").exists()
+    import pandas as pd
+
+    registrados = set(pd.read_csv(e2.carpeta / "0_insumos" / "insumos.csv")["insumo"])
+    assert {"tabla_censo", "radios", "regiones", "cobertura", "degradacion"} <= registrados

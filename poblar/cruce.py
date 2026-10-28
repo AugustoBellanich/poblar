@@ -93,7 +93,7 @@ def construir(ejecucion: Ejecucion, radios: pd.DataFrame | None = None) -> pd.Da
     radios = pd.DataFrame(radios).drop(columns="geometry", errors="ignore")
 
     # 1. Capa temática en la grilla de trabajo
-    origen = Path(cfg["insumos"][obtener(cfg, "cruce.insumo")]["ruta"])
+    origen = Path(cfg["insumos"][obtener(cfg, "cruce.insumo", "degradacion")]["ruta"])
     tematica = d / "tematica_trabajo.tif"
     alinear(origen, ids_tif, tematica)
     with rasterio.open(tematica) as a, rasterio.open(ids_tif) as b:

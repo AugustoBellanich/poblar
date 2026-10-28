@@ -102,7 +102,11 @@ class Ejecucion:
         (carpeta / "config.yaml").write_text(
             yaml.safe_dump(cfg_sin_meta, allow_unicode=True, sort_keys=False), encoding="utf-8"
         )
-        shutil.copy2(cfg["_meta"]["config"], carpeta / "config_original.yaml")
+        meta = cfg.get("_meta", {})
+        for clave, destino in (("config", "config_original.yaml"), ("metodo", "metodo.yaml"),
+                               ("registro", "registro.yaml")):
+            if meta.get(clave):
+                shutil.copy2(meta[clave], carpeta / destino)
         ejecucion._escribir_entorno()
         log.info("Ejecución '%s' en %s", cfg["nombre"], carpeta)
         return ejecucion

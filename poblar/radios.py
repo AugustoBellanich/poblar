@@ -39,11 +39,36 @@ def leer_tabla(ins: dict[str, Any], campo_id: str = "id_radio") -> pd.DataFrame:
     return df
 
 
-def leer_mapa(ins: dict[str, Any], campo_codigo: str) -> gpd.GeoDataFrame:
+def leer_mapa(ins: dict[str, Any], campo_codigo: str | None) -> gpd.GeoDataFrame:
     """Lee la cartografía de radios (shapefile, zip, gpkg) y normaliza el código."""
     gdf = gpd.read_file(ruta_vector(ins), layer=ins.get("capa"))
-    gdf[campo_codigo] = gdf[campo_codigo].astype(str).str.strip().str.zfill(9)
+    if campo_codigo is not None:
+        gdf[campo_codigo] = gdf[campo_codigo].astype(str).str.strip().str.zfill(9)
     return gdf
+
+
+def detectar_campo_codigo(mapa: gpd.GeoDataFrame, ids_tabla: set[str]) -> tuple[str, float]:
+    """Campo del mapa cuyos valores (como código de 9 dígitos) más coinciden con los de la tabla.
+
+    Returns:
+        El campo y la proporción de radios de la tabla que encuentra.
+
+    Raises:
+        ValueError: Si ningún campo encuentra al menos la mitad de los radios de la tabla.
+    """
+    mejor, prop = None, 0.0
+    for c in mapa.columns:
+        if c == mapa.geometry.name:
+            continue
+        valores = set(mapa[c].astype(str).str.strip().str.replace(r"\.0$", "", regex=True).str.zfill(9))
+        p = len(valores & ids_tabla) / max(len(ids_tabla), 1)
+        if p > prop:
+            mejor, prop = c, p
+    if mejor is None or prop < 0.5:
+        raise ValueError("No se pudo identificar el campo con el código de radio en la cartografía "
+                         f"(mejor coincidencia: {mejor}, {prop:.0%}). Indicarlo: "
+                         'insumos={"radios": {"ruta": ..., "campo_codigo": "..."}}.')
+    return mejor, prop
 
 
 # ----------------------------------------------------------------- región
@@ -98,7 +123,7 @@ def construir(ejecucion: Ejecucion) -> gpd.GeoDataFrame:
     """Corre la etapa 1 y devuelve los radios listos para la grilla."""
     cfg = ejecucion.cfg
     d = ejecucion.dir_etapa(ETAPA)
-    campo_cod = obtener(cfg, "radios.campo_codigo_mapa")
+    campo_cod = obtener(cfg, "radios.campo_codigo_mapa", None)
     union = obtener(cfg, "radios.union")
     id_desde = obtener(cfg, "radios.id_desde")
     campo_reg = obtener(cfg, "region.campo")
@@ -113,6 +138,13 @@ def construir(ejecucion: Ejecucion) -> gpd.GeoDataFrame:
 
     # 2. Cartografía
     mapa = leer_mapa(cfg["insumos"]["radios"], campo_cod)
+    if campo_cod is None:
+        campo_cod, prop = detectar_campo_codigo(mapa, set(tabla["id_radio"]))
+        mapa[campo_cod] = (mapa[campo_cod].astype(str).str.strip()
+                           .str.replace(r"\.0$", "", regex=True).str.zfill(9))
+        log.info("[%s] campo de código detectado: %s (%.1f %% de los radios de la tabla)",
+                 ETAPA, campo_cod, 100 * prop)
+        ejecucion.balance(ETAPA, "campo de código detectado", campo=campo_cod, coincidencia_pct=round(100 * prop, 2))
     ejecucion.balance(ETAPA, "cartografía", filas=len(mapa), crs=str(mapa.crs))
 
     ids_tabla, ids_mapa = set(tabla["id_radio"]), set(mapa[campo_cod])

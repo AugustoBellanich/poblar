@@ -76,7 +76,7 @@ def construir(ejecucion: Ejecucion, radios: gpd.GeoDataFrame | None = None) -> d
         radios = gpd.read_parquet(ejecucion.carpeta / "1_radios" / "radios.parquet")
 
     # 1. Cobertura en la grilla de trabajo
-    origen = cfg["insumos"][obtener(cfg, "cobertura.insumo")]["ruta"]
+    origen = cfg["insumos"][obtener(cfg, "cobertura.insumo", "cobertura")]["ruta"]
     xmin, ymin, xmax, ymax = _extension(cfg, radios, crs)
     trabajo = d / "cobertura_trabajo.tif"
     args = ["gdalwarp", "-overwrite", "-t_srs", f"EPSG:{crs}",

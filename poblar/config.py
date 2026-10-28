@@ -19,9 +19,8 @@ log = logging.getLogger(__name__)
 # Claves obligatorias por etapa. Se verifican antes de ejecutar.
 OBLIGATORIAS: dict[str, list[str]] = {
     "general": ["nombre", "anio_censo"],
-    "insumos": ["insumos.tabla_censo.ruta", "insumos.radios.ruta", "insumos.regiones.ruta"],
+    "insumos": [],
     "radios": [
-        "radios.campo_codigo_mapa",
         "radios.union",
         "radios.id_desde",
         "region.campo",
@@ -34,7 +33,6 @@ OBLIGATORIAS: dict[str, list[str]] = {
         "grilla_trabajo.modo",
         "grilla_trabajo.extension",
         "grilla_trabajo.remuestreo_cobertura",
-        "cobertura.insumo",
         "cobertura.clases",
         "cobertura.codigo_nodata",
     ],
@@ -46,11 +44,9 @@ OBLIGATORIAS: dict[str, list[str]] = {
         "dasimetria.variables",
     ],
     "cruce": [
-        "cruce.insumo",
         "cruce.clases",
     ],
     "publicacion": [
-        "publicacion.grilla_referencia",
         "publicacion.remuestreo",
         "publicacion.productos",
     ],
@@ -72,6 +68,16 @@ VALORES_PERMITIDOS: dict[str, set[Any]] = {
     "grilla_trabajo.remuestreo_cobertura": {"near", "mode"},
     "dasimetria.ponderadores.peso_urbano": {"complemento", "uno"},
 }
+
+
+# Insumos por rol. Cada etapa necesita los suyos; los demás se pueden omitir.
+ROLES = ["tabla_censo", "radios", "regiones", "cobertura", "degradacion"]
+# Rol por defecto de los insumos que nombra el método (se pueden cambiar en el método).
+ROL_POR_CLAVE = {"cobertura.insumo": "cobertura", "cruce.insumo": "degradacion",
+                 "publicacion.grilla_referencia": "cobertura"}
+# Datos que dependen del archivo y no del método: se dan junto al insumo y van a esta clave.
+DATOS_DEL_ARCHIVO = {("radios", "campo_codigo"): "radios.campo_codigo_mapa",
+                     ("degradacion", "banda"): "cruce.banda"}
 
 
 class ErrorConfig(ValueError):
@@ -132,7 +138,7 @@ def verificar(cfg: dict[str, Any], etapas: list[str] | None = None) -> None:
     Raises:
         ErrorConfig: Con la lista completa de lo que falta, no solo lo primero.
     """
-    grupos = ["general", "insumos"] + (etapas or ["radios"])
+    grupos = ["general", "insumos"] + (["radios"] if etapas is None else list(etapas))
     faltan = [c for g in grupos for c in OBLIGATORIAS.get(g, []) if obtener(cfg, c, None) is None]
     invalidos = []
     for clave, permitidos in VALORES_PERMITIDOS.items():
@@ -146,3 +152,83 @@ def verificar(cfg: dict[str, Any], etapas: list[str] | None = None) -> None:
         if invalidos:
             partes.append("valores inválidos: " + ", ".join(invalidos))
         raise ErrorConfig("La configuración no está completa — " + "; ".join(partes))
+
+
+def roles_necesarios(cfg: dict[str, Any], etapa: str) -> list[str]:
+    """Insumos (roles) que necesita una etapa."""
+    if etapa == "radios":
+        return ["tabla_censo", "radios", "regiones"]
+    if etapa == "grilla":
+        return [obtener(cfg, "cobertura.insumo", ROL_POR_CLAVE["cobertura.insumo"])]
+    if etapa == "cruce":
+        return [obtener(cfg, "cruce.insumo", ROL_POR_CLAVE["cruce.insumo"])]
+    if etapa == "publicacion":
+        return [obtener(cfg, "publicacion.grilla_referencia", ROL_POR_CLAVE["publicacion.grilla_referencia"])]
+    return []
+
+
+def _leer_yaml(ruta: str | Path) -> dict[str, Any]:
+    with Path(ruta).open(encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def armar(
+    metodo: str | Path,
+    anio: int | None = None,
+    insumos: dict[str, Any] | str | Path | None = None,
+    registro: str | Path | None = None,
+    nombre: str | None = None,
+) -> dict[str, Any]:
+    """Arma la configuración de una ejecución a partir del método, el año y los insumos.
+
+    Args:
+        metodo: YAML con los criterios (sin rutas ni año).
+        anio: Año o período de la ejecución. Si no se indica, se toma del registro.
+        insumos: ``{rol: ruta}`` o ``{rol: {ruta, campo_codigo, banda, capa, hoja, sha256}}``,
+            con los roles de :data:`ROLES`; se pasan solo los necesarios. También puede ser una
+            carpeta: entonces las rutas salen del registro, relativas a esa carpeta.
+        registro: YAML opcional con datos fijos de un período: ``anio``, ``nombre``, sha256 y datos
+            de cada insumo, ``referencia`` y ``resultados_esperados``.
+        nombre: Nombre de la ejecución (por defecto ``<aplicacion>_<anio>``).
+
+    Returns:
+        La configuración completa, con ``_meta``.
+    """
+    cfg = copy.deepcopy(_leer_yaml(metodo))
+    reg = _leer_yaml(registro) if registro else {}
+    anio = anio if anio is not None else reg.get("anio")
+    if anio is None:
+        raise ErrorConfig("Falta el año de la ejecución (anio= o 'anio' en el registro).")
+
+    # Insumos: datos del registro + lo que se pasa al ejecutar (esto último manda)
+    declarados: dict[str, dict[str, Any]] = {k: dict(v or {}) for k, v in (reg.get("insumos") or {}).items()}
+    if isinstance(insumos, (str, Path)):
+        base = Path(insumos)
+        for v in declarados.values():
+            if v.get("ruta") and not Path(v["ruta"]).is_absolute():
+                v["ruta"] = str(base / v["ruta"])
+    else:
+        for v in declarados.values():  # sin carpeta, las rutas del registro son solo sugerencias
+            v.pop("ruta", None)
+        for rol, valor in (insumos or {}).items():
+            datos = {"ruta": valor} if isinstance(valor, (str, Path)) else dict(valor)
+            declarados.setdefault(rol, {}).update({k: (str(v) if k == "ruta" else v) for k, v in datos.items()})
+    desconocidos = sorted(set(declarados) - set(ROLES))
+    if desconocidos:
+        raise ErrorConfig(f"Insumos desconocidos: {desconocidos}. Roles válidos: {ROLES}")
+    cfg["insumos"] = {rol: v for rol, v in declarados.items() if v.get("ruta")}
+    for (rol, dato), clave in DATOS_DEL_ARCHIVO.items():
+        valor = declarados.get(rol, {}).get(dato)
+        if valor is not None:
+            seccion, sub = clave.split(".")
+            cfg.setdefault(seccion, {})[sub] = valor
+
+    for clave in ("referencia", "resultados_esperados"):
+        if clave in reg:
+            cfg[clave] = reg[clave]
+    cfg["anio_censo"] = int(anio)
+    cfg["nombre"] = nombre or reg.get("nombre") or f"{cfg.get('aplicacion', Path(metodo).stem)}_{anio}"
+    cfg["_meta"] = {"metodo": str(Path(metodo).resolve()),
+                    "registro": str(Path(registro).resolve()) if registro else None}
+    verificar(cfg, [])
+    return cfg

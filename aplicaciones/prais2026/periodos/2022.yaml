@@ -1,0 +1,44 @@
+# PRAIS 2026 — OE2 — período de reporte (censo 2022)
+# Datos fijos de la ejecución oficial: huella (sha256) de cada insumo y cifras publicadas.
+# Uso: ejecutar("aplicaciones/prais2026/metodo.yaml", registro="aplicaciones/prais2026/periodos/2022.yaml",
+#               insumos={"tabla_censo": ..., "radios": ..., ...})
+# Si un insumo no coincide con su huella, la ejecución se detiene; si una cifra no se reproduce,
+# queda una advertencia en controles.csv.
+
+anio: 2022
+nombre: prais2026_2022
+
+insumos:                      # archivo oficial de cada rol: nombre sugerido, huella y datos del archivo
+  tabla_censo:                # población por radio: total, sexo, urbana/rural, NBI y agua de red (Redatam, INDEC)
+    ruta: tabla_censo2022.xlsx
+    sha256: 89000c8e18fb6b40a0363acefbc04e6c7fbeca3bcf2ca4a12daba3d4d4b13bef
+  radios:                     # cartografía de radios censales (CONICET, repositorio 11336/149711)
+    ruta: radios_2022.zip
+    campo_codigo: COD_2022
+    sha256: 5bbd7d02fc247e1d2e6c5dbe849db6f2650c316cc3900dcbee2f8f14e68e5460
+  cobertura:                  # MapBiomas Argentina, colección PRAIS 2026, 2023, 100 m, EPSG:4326
+    ruta: MB_prais_2023_100m.tif
+    sha256: 0c53ad1bc669cacfda28d5c9613fc4803ad75ed056a361026eda5fb2bb6887a4
+  degradacion:                # «Condición final de la degradación de la tierra (2000-2023)», OE1, EPSG:4326
+    ruta: degradacion_reporte_2022.tif
+    banda: 1                  # el archivo tiene 2 bandas; se usa la 1
+    sha256: 731e34bdc19d36cfbc5ecd1dcfea7609e1d7054935444be7a57561614f6361c5
+  regiones:                   # regiones PRAIS 2026
+    ruta: regiones_PRAIS.gpkg
+    sha256: eeb8ddcda7a96a904928836f6323950bf9d00ee5b3ae1074dddbc22215d74c66
+
+referencia:
+  poblacion_integrada: 45618784    # población de la tabla censal en radios con cartografía
+
+resultados_esperados:         # cifras oficiales del PRAIS 2026 producidas con esta configuración (no bloqueante)
+  radios:
+    total: 66421
+  grilla:
+    ancho: 21003
+    alto: 47151
+  poblacion_raster: 45618783.995
+  cruce:                      # población y personas con NBI en tierras degradadas
+    poblacion_dasimetrica: 5665133
+    nbi: 712654
+  publicacion:                # población en la capa publicada (EPSG:4326)
+    poblacion_dasimetrica: 45618853.880

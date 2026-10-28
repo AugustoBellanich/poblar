@@ -1,48 +1,46 @@
-# Una aplicación nueva
+# Otros períodos y otras aplicaciones
 
-Cómo usar poblar con otros insumos: otro censo, otra cobertura, otro mapa de degradación u otras regiones. Se parte de la configuración del PRAIS 2026 y se cambia lo que corresponde.
+## Un período nuevo con el mismo método
 
-## 1. Preparar los insumos
+Por ejemplo, el PRAIS con un censo nuevo: el método no cambia; se indican el año y los archivos.
 
-| Insumo | Requisitos |
+```python
+from poblar import ejecutar
+
+ejecutar("aplicaciones/prais2026/metodo.yaml",
+         anio=2030,
+         insumos={"tabla_censo": "...", "radios": "...", "regiones": "...",
+                  "cobertura": "...", "degradacion": "..."},
+         salida="ejecuciones")
+```
+
+Antes de ejecutar, revisar que los insumos nuevos cumplan lo que el método supone:
+
+| Insumo | Qué revisar |
 |---|---|
-| Tabla censal | Una fila por radio. Código de radio (`id_radio`, se completa a 9 dígitos), tipo de radio (por ejemplo Urbano/Mixto/Rural) y los conteos: población total, por sexo, urbana y rural, y las variables a distribuir (NBI, agua de red u otras). Excel o CSV |
-| Radios | Polígonos con el mismo código de radio. Shapefile en `.zip`, GeoPackage o cualquier formato que lea GDAL |
-| Cobertura del suelo | Raster categórico |
-| Mapa de degradación | Raster categórico (u otra capa temática categórica) |
-| Regiones | Polígonos con un campo de región |
+| Tabla censal | Columna `id_radio` y los mismos nombres de columnas (`pobla_total`, `pobla_mujer`, `nbi_total`, …) y del tipo de radio (`ambito`: Urbano/Mixto/Rural). Si cambian, adaptar `dasimetria.variables` y `tablas.variables` en una copia del método |
+| Radios | El campo de código se detecta solo; si hay ambigüedad, indicarlo: `"radios": {"ruta": ..., "campo_codigo": "COD_2030"}` |
+| Cobertura | Las mismas clases. Si la colección nueva tiene otras, la etapa 2 lo informa con la lista de clases sin mapear y hay que agregarlas a `cobertura.clases` |
+| Mapa de degradación | Las mismas clases (0, 1, 2, 3, 9). Ídem en la etapa 4 con `cruce.clases`. Si tiene varias bandas, indicar cuál: `"degradacion": {"ruta": ..., "banda": 1}` |
+| Regiones | El campo `Reg_PRAIS` |
 
-## 2. Crear la carpeta de la aplicación
+Conviene ejecutar por partes: primero `etapas=["insumos", "radios"]` y revisar `controles.csv` y los CSV de `1_radios/` (radios sin cartografía, sin intersección, fuera de región); después `["grilla"]` para revisar las clases y la resolución; después el resto. Cada llamada retoma la misma carpeta.
+
+Una vez revisado, se puede crear un registro del período (copiar `aplicaciones/prais2026/periodos/2022.yaml`) con las huellas de `0_insumos/insumos.csv` y las cifras obtenidas, para que ejecuciones posteriores controlen que se usan los mismos archivos y se obtienen las mismas cifras.
+
+## Una aplicación distinta
+
+Con otro tipo de insumos (otra cobertura, otra capa temática, otro país, otras regiones), se crea una carpeta nueva con su propio método:
 
 ```
 aplicaciones/<aplicacion>/
   README.md        qué es, de dónde salen los insumos, criterios elegidos
-  configs/
-    <año>.yaml     una configuración por año o período
+  metodo.yaml      copia adaptada de aplicaciones/prais2026/metodo.yaml
+  periodos/        registros opcionales
 ```
 
-Copiar `aplicaciones/prais2026/configs/2022.yaml` y cambiar:
+En el método, cambiar `aplicacion` y revisar cada sección contra [`configuracion.md`](configuracion.md): clases de la cobertura y de la capa temática, campos de región y tipo de radio, variables, nombres de las capas de entrega y tablas. Una etapa que el método no define (por ejemplo, sin `publicacion`) se omite.
 
-1. `nombre` y `anio_censo`.
-2. `insumos`: nombres de archivo. Dejar `sha256: null` en la primera ejecución; la etapa 0 calcula los valores (están en `0_insumos/insumos.csv`) y conviene copiarlos a la configuración para fijar la versión de cada insumo.
-3. `radios.campo_codigo_mapa` y `region.campo`.
-4. `cobertura.clases`: una fila por cada clase de la cobertura nueva, con su metacategoría. Si falta alguna, la etapa 2 lo informa con la lista de clases sin mapear.
-5. `cruce.clases`: lo mismo para el mapa de degradación, con el grupo binario de cada clase.
-6. `dasimetria.variables`, `cruce.variables`, `tablas.variables` y `publicacion.productos`: según las variables de la tabla censal.
-7. Borrar `referencia` y `resultados_esperados` (son las cifras del PRAIS 2026). Después de una ejecución revisada, se pueden completar con los valores obtenidos para que las siguientes ejecuciones los controlen.
+## Comparar criterios
 
-Todas las claves: [`configuracion.md`](configuracion.md).
-
-## 3. Ejecutar por partes
-
-Conviene correr primero `["insumos", "radios"]` y revisar `controles.csv` y los CSV de `1_radios/` (radios sin cartografía, sin intersección, fuera de región). Después `["grilla"]` para revisar las clases y la resolución, y recién entonces el resto. Cada llamada retoma la misma carpeta.
-
-```python
-from poblar import ejecutar
-ejecutar("aplicaciones/<aplicacion>/configs/<año>.yaml", insumos="...", salida="ejecuciones",
-         etapas=["insumos", "radios"])
-```
-
-## 4. Comparar criterios
-
-Para medir el efecto de un criterio (por ejemplo, otra resolución o otra definición de urbano/rural), copiar la configuración con otro `nombre`, cambiar solo ese criterio y ejecutar. `poblar.verificar.comparar_raster` compara los rasters píxel por píxel; las tablas de `6_tablas/` se comparan directamente.
+Para medir el efecto de un criterio (otra resolución, otra definición de urbano/rural), copiar el método, cambiar solo ese criterio y ejecutar con otro `nombre=`. `poblar.verificar.comparar_raster` compara los rasters píxel por píxel; las tablas de `6_tablas/` se comparan directamente.

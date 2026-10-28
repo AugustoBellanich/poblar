@@ -121,6 +121,11 @@ def registrar(ejecucion: Ejecucion) -> list[dict[str, Any]]:
                        sha256=h[:12])
 
     d = ejecucion.dir_etapa(ETAPA)
+    # Al retomar con menos insumos, se conservan los ya registrados que no se volvieron a dar.
+    previos = d / "insumos.json"
+    if previos.exists():
+        nuevos = {f["insumo"] for f in filas}
+        filas = [f for f in json.loads(previos.read_text(encoding="utf-8")) if f["insumo"] not in nuevos] + filas
     with (d / "insumos.json").open("w", encoding="utf-8") as f:
         json.dump(filas, f, ensure_ascii=False, indent=2, default=str)
     planas = [{k: (json.dumps(v, ensure_ascii=False) if isinstance(v, list) else v) for k, v in f.items()}

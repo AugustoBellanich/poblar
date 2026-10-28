@@ -115,7 +115,7 @@ def construir(ejecucion: Ejecucion) -> list[dict[str, Any]]:
     cfg = ejecucion.cfg
     d = ejecucion.dir_etapa(ETAPA)
     anio = cfg["anio_censo"]
-    referencia = Path(cfg["insumos"][obtener(cfg, "publicacion.grilla_referencia")]["ruta"])
+    referencia = Path(cfg["insumos"][obtener(cfg, "publicacion.grilla_referencia", "cobertura")]["ruta"])
     remuestreo = obtener(cfg, "publicacion.remuestreo")
     if remuestreo not in REMUESTREOS:
         raise ValueError(f"publicacion.remuestreo='{remuestreo}' no válido ({sorted(REMUESTREOS)})")
