@@ -38,7 +38,7 @@ Solo hacen falta los insumos de las etapas que se quieran correr: sin mapa de de
 
 Para reproducir un período ya publicado, `registro=` agrega las huellas (sha256) de los insumos oficiales y las cifras esperadas: si un archivo no es el oficial, la ejecución se detiene; si una cifra no se reproduce, queda una advertencia. Ver [`aplicaciones/prais2026/`](aplicaciones/prais2026/).
 
-En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb) (formulario con el año y los archivos, informe y mapas al final).
+En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipynb). Todo se maneja con formularios: año y archivos, método estándar o una variante con algunos criterios cambiados, informe, mapas y comparación de una variante con la ejecución estándar.
 
 ## Etapas
 

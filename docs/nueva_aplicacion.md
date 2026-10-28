@@ -43,4 +43,20 @@ En el método, cambiar `aplicacion` y revisar cada sección contra [`configuraci
 
 ## Comparar criterios
 
-Para medir el efecto de un criterio (otra resolución, otra definición de urbano/rural), copiar el método, cambiar solo ese criterio y ejecutar con otro `nombre=`. `poblar.verificar.comparar_raster` compara los rasters píxel por píxel; las tablas de `6_tablas/` se comparan directamente.
+Para medir el efecto de un criterio (otra resolución, otra definición de urbano/rural), se ejecuta una variante del método con otro nombre y se compara con la ejecución estándar:
+
+```python
+from poblar import ejecutar
+from poblar.config import variar
+from poblar.tablas import comparar
+
+metodo = variar("aplicaciones/prais2026/metodo.yaml",
+                {"cruce.ambito_reporte.Mixto": "Urbano"},      # radios mixtos como urbanos
+                "metodos/mixtos_urbanos.yaml")
+ejecutar(metodo, anio=2022, insumos=INSUMOS, salida="ejecuciones",
+         nombre="prais2026_2022_mixtos-urb",
+         base="ejecuciones/prais2026_2022")                    # reutiliza lo que no cambia
+comparar("ejecuciones/prais2026_2022", "ejecuciones/prais2026_2022_mixtos-urb")
+```
+
+Con `base=` se copian de esa ejecución las etapas que darían lo mismo (mismos criterios, mismos insumos según su sha256 y mismas etapas previas), y solo se recalcula desde la primera que cambia; queda registrado en `reutilizado.json`. `poblar.ejecutar.etapas_afectadas(["cruce.ambito_reporte.Mixto"])` dice de antemano qué se recalcula. `comparar` devuelve los indicadores que cambian; `poblar.verificar.comparar_raster` compara dos rasters píxel por píxel. En Colab, el paso 3 del cuaderno arma la variante con un formulario.

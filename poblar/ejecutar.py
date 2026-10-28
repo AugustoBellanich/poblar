@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import csv
+import json
+import shutil
 from pathlib import Path
 
 from poblar import config as cfgmod
@@ -14,6 +17,91 @@ DIRECTORIOS = {"radios": "1_radios", "grilla": "2_grilla", "dasimetria": "3_dasi
                "cruce": "4_cruce", "publicacion": "5_publicacion", "tablas": "6_tablas"}
 PREVIA = {"grilla": "radios", "dasimetria": "grilla", "cruce": "dasimetria",
           "publicacion": "dasimetria", "tablas": "cruce"}
+
+
+# Para reutilizar una etapa de otra ejecución: secciones del método de las que depende y etapas previas
+SECCIONES = {"radios": ["radios", "region"], "grilla": ["grilla_trabajo", "cobertura"],
+             "dasimetria": ["dasimetria"], "cruce": ["cruce"], "publicacion": ["publicacion"], "tablas": ["tablas"]}
+DEPENDE_DE = {"radios": [], "grilla": ["radios"], "dasimetria": ["radios", "grilla"], "cruce": ["dasimetria"],
+              "publicacion": ["dasimetria"], "tablas": ["radios", "cruce"]}
+
+
+def etapas_afectadas(claves: list[str] | set[str]) -> list[str]:
+    """Etapas que hay que recalcular si cambian estas claves del método (y las que dependen de ellas)."""
+    secciones = {c.split(".")[0] for c in claves}
+    afectadas: list[str] = []
+    for etapa in ETAPAS_DISPONIBLES[1:]:
+        if secciones & set(SECCIONES[etapa]) or any(d in afectadas for d in DEPENDE_DE[etapa]):
+            afectadas.append(etapa)
+    return afectadas
+
+
+# Nombres de rol de versiones anteriores
+ROLES_ANTERIORES = {"mapbiomas": "cobertura"}
+# Claves que nombran archivos o tienen un valor por defecto: no cambian resultados
+_NEUTRAS = {"insumo", "grilla_referencia"}
+
+
+def _huellas(carpeta: Path) -> dict[str, str]:
+    ruta = carpeta / "0_insumos" / "insumos.json"
+    if not ruta.exists():
+        return {}
+    return {ROLES_ANTERIORES.get(i["insumo"], i["insumo"]): i.get("sha256")
+            for i in json.loads(ruta.read_text(encoding="utf-8"))}
+
+
+def _seccion(cfg: dict, sec: str) -> object:
+    """Sección del método sin las claves que no cambian resultados (para comparar)."""
+    v = cfg.get(sec)
+    if not isinstance(v, dict):
+        return v
+    v = {k: x for k, x in v.items() if k not in _NEUTRAS}
+    if sec == "cruce" and v.get("banda", 1) == 1:
+        v.pop("banda", None)
+    return v
+
+
+def etapas_reutilizables(cfg: dict, huellas: dict[str, str], base: Path) -> list[str]:
+    """Etapas de ``base`` que darían lo mismo con esta configuración: mismos criterios, mismos
+    insumos (sha256) y mismas etapas de las que dependen."""
+    cfg_base = cfgmod._leer_yaml(base / "config.yaml")
+    huellas_base = _huellas(base)
+    if cfg_base.get("anio_censo") != cfg.get("anio_censo"):
+        return []
+    ok: list[str] = []
+    for etapa in ETAPAS_DISPONIBLES[1:]:
+        if not (base / DIRECTORIOS[etapa]).exists():
+            continue
+        iguales = all(_seccion(cfg, sec) == _seccion(cfg_base, sec) for sec in SECCIONES[etapa])
+        roles = cfgmod.roles_necesarios(cfg, etapa)
+        mismos_insumos = all(huellas.get(r) and huellas.get(r) == huellas_base.get(r) for r in roles)
+        if iguales and mismos_insumos and all(d in ok for d in DEPENDE_DE[etapa]):
+            ok.append(etapa)
+    return ok
+
+
+def _reutilizar(ejecucion: Ejecucion, base: Path, lista: list[str]) -> list[str]:
+    """Copia de ``base`` las etapas reutilizables y las quita de la lista. Devuelve la lista nueva."""
+    candidatas = [e for e in etapas_reutilizables(ejecucion.cfg, _huellas(ejecucion.carpeta), base)
+                  if e in lista and not (ejecucion.carpeta / DIRECTORIOS[e]).exists()]
+    if not candidatas:
+        log.info("No hay etapas para reutilizar de %s (cambian los criterios o los insumos)", base)
+        return lista
+    dirs = {DIRECTORIOS[e] for e in candidatas}
+    for e in candidatas:
+        log.info("Reutilizando la etapa '%s' de %s", e, base)
+        shutil.copytree(base / DIRECTORIOS[e], ejecucion.carpeta / DIRECTORIOS[e], dirs_exist_ok=True)
+    cj = base / "controles.json"
+    if cj.exists():
+        ejecucion.previos_controles += [f for f in json.loads(cj.read_text(encoding="utf-8"))
+                                        if f.get("etapa") in dirs]
+    bc = base / "balance.csv"
+    if bc.exists():
+        with bc.open(encoding="utf-8") as f:
+            ejecucion.previos_balance += [r for r in list(csv.reader(f))[1:] if r and r[0] in dirs]
+    (ejecucion.carpeta / "reutilizado.json").write_text(
+        json.dumps({"base": str(base), "etapas": candidatas}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return [e for e in lista if e not in candidatas]
 
 
 def _es_config_completa(ruta: Path) -> bool:
@@ -60,6 +148,7 @@ def ejecutar(
     trabajo: str | Path | None = None,
     registro: str | Path | None = None,
     nombre: str | None = None,
+    base: str | Path | None = None,
 ) -> Ejecucion:
     """Ejecuta las etapas y deja todo en ``<salida>/<nombre>/``.
 
@@ -79,6 +168,10 @@ def ejecutar(
         registro: YAML opcional con los datos fijos de un período (sha256 de los insumos, cifras
             esperadas). Ver ``aplicaciones/prais2026/periodos/``.
         nombre: Nombre de la ejecución (por defecto ``<aplicacion>_<anio>``).
+        base: Carpeta de otra ejecución (por ejemplo, la estándar del mismo año) de la que se copian
+            las etapas que darían lo mismo: mismos criterios, mismos insumos (sha256) y mismas etapas
+            previas. Sirve para probar un criterio sin repetir lo que no cambia. Queda registrado en
+            ``reutilizado.json``.
 
     Returns:
         La ejecución, con sus controles y su balance.
@@ -108,6 +201,8 @@ def ejecutar(
 
             etapa0.registrar(ejecucion)
             ejecucion.guardar_avance()
+        if base is not None and Path(base).resolve() != Path(salida, ejecucion.carpeta.name).resolve():
+            lista = _reutilizar(ejecucion, Path(base), lista)
         radios = None
         if "radios" in lista:
             from poblar import radios as etapa1

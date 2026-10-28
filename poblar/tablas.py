@@ -193,3 +193,24 @@ def unir_periodos(carpetas: dict[int, str | Path], salida: str | Path) -> dict[s
         u.to_csv(salida / f"{nombre}.csv", index=False, encoding="utf-8")
         out[nombre] = u
     return out
+
+
+def comparar(carpeta_a: str | Path, carpeta_b: str | Path, solo_distintos: bool = True) -> pd.DataFrame:
+    """Compara los indicadores de dos ejecuciones (por ejemplo, la estándar y una variante).
+
+    Returns:
+        Una fila por ámbito, región, variable y grupo con la cantidad y los porcentajes de cada
+        ejecución y la diferencia. Con ``solo_distintos``, solo las filas que cambian.
+    """
+    claves = ["ambito", "region", "variable", "grupo"]
+    a = pd.read_csv(Path(carpeta_a) / "6_tablas" / "indicadores.csv")
+    b = pd.read_csv(Path(carpeta_b) / "6_tablas" / "indicadores.csv")
+    m = a.merge(b, on=claves, how="outer", suffixes=("_a", "_b"))
+    m["dif_n"] = m["n_b"] - m["n_a"]
+    m["dif_pct_n"] = 100 * m["dif_n"] / m["n_a"]
+    for col in ("incidencia", "exposicion", "composicion"):
+        m[f"dif_{col}"] = m[f"{col}_b"] - m[f"{col}_a"]
+    if solo_distintos:
+        difs = m[[c for c in m.columns if c.startswith("dif_")]].abs().fillna(0)
+        m = m[(difs > 1e-9).any(axis=1) | m["n_a"].isna() | m["n_b"].isna()]
+    return m.reset_index(drop=True)

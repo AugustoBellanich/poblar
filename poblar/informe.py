@@ -70,8 +70,10 @@ background:var(--papel);border:1px solid var(--linea);border-left:5px solid curr
 .barra{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--linea)}
 .barra i{display:block}.barra .b-ok{background:var(--ok)}.barra .b-adv{background:var(--adv)}.barra .b-falla{background:var(--falla)}
 .etapa ul{list-style:none;margin:10px 0 0;padding:0;font-size:.84rem}
-.etapa li{display:grid;grid-template-columns:18px 1fr;gap:6px;padding:4px 0;border-top:1px solid var(--linea)}
-.etapa li .d{grid-column:2;color:var(--suave);font-size:.8rem}.ver{color:var(--acento);font-size:.8rem}
+.etapa li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:6px;padding:4px 0;border-top:1px solid var(--linea)}
+.etapa li{min-width:0}.etapa li>span{min-width:0}
+.etapa li .d{grid-column:2;color:var(--suave);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help}
+.etapa li .d.largo{white-space:normal;overflow-wrap:anywhere}td.t{overflow-wrap:anywhere}.ver{color:var(--acento);font-size:.8rem}
 details[open] .ver{display:none}
 .explica{grid-column:2;background:var(--tabla);border-radius:6px;padding:6px 8px;font-size:.8rem;margin-top:4px}
 """
@@ -137,6 +139,15 @@ def _explicacion_conservacion(c: Path, no: pd.DataFrame) -> str:
             "(contingencia de nivel 3). Su población se reparte en píxeles de radios vecinos y toma las tasas "
             "de esos radios: la población total se conserva, pero las variables pueden diferir algo del censo."
             f"{rango} Detalle en <code>3_dasimetria/contingencias.csv</code>.")
+
+
+def _detalle(texto: str) -> str:
+    """Detalle de un control. Las rutas se cortan a una línea; el texto completo aparece al pasar el mouse."""
+    t = _numeros_es(texto)
+    es_ruta = "/" in t and " " not in t.strip()
+    clase = "d" if es_ruta else "d largo"
+    mostrar = t.rstrip("/").split("/")[-1] if es_ruta else t
+    return f'<span class="{clase}" title="{html.escape(t, quote=True)}">{html.escape(mostrar)}</span>'
 
 
 def _numeros_es(texto: str) -> str:
@@ -207,7 +218,7 @@ def _seccion_controles(c: Path) -> str:
         items = []
         for _, f in g.sort_values("clase", key=lambda s: s.map({"falla": 0, "adv": 1, "ok": 2})).iterrows():
             items.append(f'<li><span class="{f["clase"]}">{iconos[f["clase"]]}</span><span>{html.escape(str(f["nombre"]))}</span>'
-                         f'<span class="d">{html.escape(_numeros_es(str(f["detalle"])))}</span></li>')
+                         f'{_detalle(str(f["detalle"]))}</li>')
         if etapa == "3_dasimetria" and explica and not g["detalle"].astype(str).str.contains("Esperable").any():
             items.insert(int((g["clase"] != "ok").sum()), f'<li><span></span><div class="explica">{explica}</div></li>')
         abierta = " open" if cl_etapa != "ok" else ""
@@ -345,7 +356,14 @@ def _seccion_ejecucion(c: Path, cfg: dict[str, Any]) -> str:
     datos = [("poblar", entorno.get("poblar_commit", "—")), ("Python", entorno.get("python", "—")),
              ("GDAL", entorno.get("gdal", "—")), ("Fecha (UTC)", entorno.get("fecha_utc", "—"))]
     tabla = "".join(f"<tr><td class='t'>{k}</td><td class='t'>{html.escape(v)}</td></tr>" for k, v in datos)
-    return (f'<div class="envoltura"><table><tbody>{tabla}</tbody></table></div><h3>Insumos</h3>{filas}'
+    reut = ""
+    if (c / "reutilizado.json").exists():
+        import json
+
+        r = json.loads((c / "reutilizado.json").read_text(encoding="utf-8"))
+        reut = (f"<p class='nota'>Etapas reutilizadas de otra ejecución (mismos criterios e insumos): "
+                f"{html.escape(', '.join(r.get('etapas', [])))}, de <code>{html.escape(Path(r.get('base', '')).name)}</code>.</p>")
+    return (f'<div class="envoltura"><table><tbody>{tabla}</tbody></table></div>{reut}<h3>Insumos</h3>{filas}'
             "<p class='nota'>Configuración completa en <code>config.yaml</code>; huellas de todos los productos en "
             "<code>manifiesto.csv</code>.</p>")
 
@@ -381,6 +399,13 @@ def generar(carpeta: str | Path, mapas: bool = True) -> Path:
     anio = cfg.get("anio_censo", "")
     nombre = str(cfg.get("nombre", c.name))
     clase, estado, det = _estado(_leer(c / "controles.csv"))
+    variante = ""
+    if (c / "metodo.yaml").exists():
+        lineas = (c / "metodo.yaml").read_text(encoding="utf-8").splitlines()
+        if lineas and lineas[0].startswith("# Variante de"):
+            cambios = [x[4:].strip() for x in lineas[1:] if x.startswith("#   ")]
+            variante = (f'<div class="estado"><b>{html.escape(lineas[0][2:])}</b><span>'
+                        + html.escape("; ".join(cambios)) + "</span></div>")
     fecha = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
     e = html.escape
     doc = (f'<!doctype html><html lang="es"><head><meta charset="utf-8">'
@@ -388,7 +413,7 @@ def generar(carpeta: str | Path, mapas: bool = True) -> Path:
            f"<style>{CSS}</style></head><body><main><header>"
            f'<p class="antetitulo">Informe de ejecución · período {anio}</p><h1>{e(titulo)}</h1>'
            f'<p class="sub">Ejecución <code>{e(nombre)}</code> · generado el {fecha} UTC por poblar</p>'
-           f'<div class="estado {clase}"><b>{e(estado)}</b><span>{e(det)}</span></div></header>'
+           f'<div class="estado {clase}"><b>{e(estado)}</b><span>{e(det)}</span></div>{variante}</header>'
            f"{cuerpo}</main></body></html>")
     destino = c / f"informe_{c.name}.html"
     destino.write_text(doc, encoding="utf-8")

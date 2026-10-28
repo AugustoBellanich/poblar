@@ -456,3 +456,48 @@ def test_informe_explica_advertencias_de_conservacion(tmp_path: Path) -> None:
     texto = _explicacion_conservacion(tmp_path, no)
     assert "1 radios (50 personas)" in texto
     assert "120 personas (12,0000 %)" in texto
+
+
+def test_reutilizar_etapas_de_otra_ejecucion(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
+    import json
+
+    metodo, rutas = _metodo_y_archivos(tmp_path, insumos)
+    base = ejecutar(metodo, anio=2010, insumos=rutas, salida=tmp_path / "ejecuciones")
+    cfg = yaml.safe_load(metodo.read_text(encoding="utf-8"))
+    cfg["cruce"]["clases"] = [dict(c, binario=None) if c.get("binario") not in (None, cfg["cruce"]["grupo_expuesto"])
+                              else c for c in cfg["cruce"]["clases"]]   # cambia solo el cruce
+    otro = tmp_path / "metodo_otro.yaml"
+    otro.write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
+    e = ejecutar(otro, anio=2010, insumos=rutas, salida=tmp_path / "ejecuciones", nombre="variante",
+                 base=base.carpeta)
+    reut = json.loads((e.carpeta / "reutilizado.json").read_text(encoding="utf-8"))
+    assert reut["etapas"] == ["radios", "grilla", "dasimetria"]
+    assert (e.carpeta / "4_cruce" / "cruce_largo.csv").exists()
+    import pandas as pd
+
+    ctrl = pd.read_csv(e.carpeta / "controles.csv")
+    assert {"1_radios", "3_dasimetria", "4_cruce"} <= set(ctrl["etapa"])   # se conservan los de la base
+    # con los mismos criterios se reutiliza todo lo que existe
+    e2 = ejecutar(metodo, anio=2010, insumos=rutas, salida=tmp_path / "ejecuciones", nombre="igual",
+                  base=base.carpeta)
+    assert "cruce" in json.loads((e2.carpeta / "reutilizado.json").read_text(encoding="utf-8"))["etapas"]
+    from poblar.tablas import comparar
+
+    if (base.carpeta / "6_tablas").exists():
+        assert comparar(base.carpeta, base.carpeta).empty
+        assert len(comparar(base.carpeta, base.carpeta, solo_distintos=False)) > 0
+
+
+def test_variar_metodo_y_etapas_afectadas(tmp_path: Path) -> None:
+    from poblar.config import _leer_yaml, variar
+    from poblar.ejecutar import etapas_afectadas
+
+    base = Path(__file__).parents[1] / "aplicaciones" / "prais2026" / "metodo.yaml"
+    ruta = variar(base, {"cruce.ambito_reporte.Mixto": "Urbano"}, tmp_path / "v.yaml", quitar=["publicacion"])
+    cfg = _leer_yaml(ruta)
+    assert cfg["cruce"]["ambito_reporte"]["Mixto"] == "Urbano" and "publicacion" not in cfg
+    assert ruta.read_text(encoding="utf-8").startswith("# Variante de metodo.yaml")
+    assert etapas_afectadas(["cruce.ambito_reporte.Mixto"]) == ["cruce", "tablas"]
+    assert etapas_afectadas(["tablas.urbano_rural.pais"]) == ["tablas"]
+    assert etapas_afectadas(["grilla_trabajo.modo"]) == ["grilla", "dasimetria", "cruce", "publicacion", "tablas"]
+    assert etapas_afectadas(["region.umbral_vecino_km"])[0] == "radios"

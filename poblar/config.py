@@ -232,3 +232,35 @@ def armar(
                     "registro": str(Path(registro).resolve()) if registro else None}
     verificar(cfg, [])
     return cfg
+
+
+def variar(metodo: str | Path, cambios: dict[str, Any], destino: str | Path,
+           quitar: list[str] | tuple[str, ...] = ()) -> Path:
+    """Escribe una variante del método con algunos criterios cambiados.
+
+    Args:
+        metodo: YAML del método de partida.
+        cambios: ``{"clave.con.puntos": valor}``; por ejemplo ``{"cruce.ambito_reporte.Mixto": "Urbano"}``.
+        destino: YAML a escribir.
+        quitar: Secciones a quitar (por ejemplo ``["publicacion"]``: la etapa se omite).
+
+    Returns:
+        La ruta del YAML escrito, que empieza con la lista de cambios respecto del método de partida.
+    """
+    cfg = copy.deepcopy(_leer_yaml(metodo))
+    for clave, valor in cambios.items():
+        nodo = cfg
+        *camino, ultima = clave.split(".")
+        for parte in camino:
+            nodo = nodo.setdefault(parte, {})
+        nodo[ultima] = valor
+    for sec in quitar:
+        cfg.pop(sec, None)
+    destino = Path(destino)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    encabezado = [f"# Variante de {Path(metodo).name}" if cambios else f"# Copia de {Path(metodo).name}"]
+    encabezado += [f"#   {k}: {v!r}" for k, v in cambios.items()]
+    encabezado += [f"#   sin la sección '{sec}'" for sec in quitar]
+    destino.write_text("\n".join(encabezado) + "\n\n" + yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False),
+                       encoding="utf-8")
+    return destino
