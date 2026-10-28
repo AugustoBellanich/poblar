@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>poblar · cómo funciona</title>
+<link rel="icon" href="img/isotipo.svg" type="image/svg+xml">
 <meta name="description" content="Recorrido completo de poblar: insumos, etapas, cálculos, criterios, controles y productos.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
@@ -22,7 +23,8 @@ a{color:var(--acento)}
 code,.mono{font-family:var(--mono);font-size:.86em}
 code{background:var(--tenue);padding:1px 5px;border-radius:4px}
 .envoltura{max-width:1180px;margin:0 auto;padding:0 16px}
-header.portada{padding:44px 0 28px;border-bottom:1px solid var(--linea)}
+header.portada{padding:36px 0 28px;border-bottom:1px solid var(--linea)}
+.logo img{display:block;height:56px;width:auto;margin:0 0 22px}
 .ante{color:var(--acento);font-weight:650;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 8px}
 h1{font-size:clamp(1.7rem,3.6vw,2.4rem);line-height:1.15;margin:0 0 12px;letter-spacing:-.01em}
 .bajada{max-width:760px;color:var(--suave);font-size:1.05rem;margin:0}
@@ -144,7 +146,8 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
 </head>
 <body>
 <header class="portada"><div class="envoltura">
-  <p class="ante">poblar · documentación del método</p>
+  <picture class="logo"><source media="(prefers-color-scheme: dark)" srcset="img/poblar_oscuro.svg"><img src="img/poblar.svg" alt="poblar · población expuesta a la degradación de tierras" height="56"></picture>
+  <p class="ante">Documentación del método</p>
   <h1>Cómo se calcula la población expuesta a la degradación de tierras</h1>
   <p class="bajada">Qué tienen que cumplir los insumos, qué hace cada etapa con ellos, con qué cálculos y criterios, qué controla y qué deja. Elegí una etapa para ver el detalle; los valores de ejemplo son los del método del PRAIS 2026.</p>
   <div class="enlaces">

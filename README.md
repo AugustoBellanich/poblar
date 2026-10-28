@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/poblar_oscuro.svg">
+    <img src="docs/img/poblar.svg" alt="poblar · población expuesta a la degradación de tierras" width="420">
+  </picture>
+</p>
+
 # poblar
 
 Calcula la **población expuesta a la degradación de tierras** a partir de un censo por radio, una cobertura del suelo y un mapa de degradación. Produce los indicadores del Objetivo Estratégico 2 de la CNULD (SO2-1 pobreza, SO2-2 agua, SO2-3 población expuesta) como rasters y tablas, con cada criterio escrito en un archivo de configuración y cada paso controlado y registrado.

@@ -56,7 +56,8 @@ figure img{width:100%;height:auto;max-height:520px;object-fit:contain;display:bl
 .mapas.chicos figure img{max-height:300px}figcaption{color:#555;font-size:.8rem;padding:4px 4px 0}
 .nota{color:var(--suave);font-size:.85rem}.etiqueta{display:inline-block;padding:1px 8px;border-radius:99px;
 font-size:.75rem;font-weight:600;border:1px solid currentColor}code{font-size:.85em}
-header{border-bottom:1px solid var(--linea);padding-bottom:16px}.antetitulo{color:var(--acento);font-weight:600;
+header{border-bottom:1px solid var(--linea);padding-bottom:16px}
+.marca{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-weight:650;font-size:1.05rem;letter-spacing:-.01em}.antetitulo{color:var(--acento);font-weight:600;
 font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px}
 .estado{display:flex;gap:12px;align-items:center;margin-top:14px;padding:12px 16px;border-radius:10px;
 background:var(--papel);border:1px solid var(--linea);border-left:5px solid currentColor}
@@ -369,6 +370,8 @@ def _seccion_ejecucion(c: Path, cfg: dict[str, Any]) -> str:
 
 
 TITULO_POR_DEFECTO = "Población expuesta a la degradación de tierras"
+# Isotipo de poblar (docs/img/isotipo.svg)
+ISOTIPO = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="34" height="34" role="img" aria-label="poblar">  <rect x="3.96" y="3.96" width="7.08" height="7.08" rx="1.27" fill="#c49a5a"/>  <rect x="17.76" y="2.76" width="9.48" height="9.48" rx="1.71" fill="#8a5cd6"/>  <rect x="31.32" y="1.32" width="12.36" height="12.36" rx="2.22" fill="#4a2f7a"/>  <rect x="45.60" y="0.60" width="13.80" height="13.80" rx="2.48" fill="#4a2f7a"/>  <rect x="4.44" y="19.44" width="6.12" height="6.12" rx="1.10" fill="#c49a5a"/>  <rect x="18.48" y="18.48" width="8.04" height="8.04" rx="1.45" fill="#8a5cd6"/>  <rect x="31.80" y="16.80" width="11.40" height="11.40" rx="2.05" fill="#4a2f7a"/>  <rect x="46.08" y="16.08" width="12.84" height="12.84" rx="2.31" fill="#4a2f7a"/>  <rect x="4.82" y="34.82" width="5.35" height="5.35" rx="0.96" fill="#c49a5a"/>  <rect x="19.20" y="34.20" width="6.60" height="6.60" rx="1.19" fill="#c49a5a"/>  <rect x="33.24" y="33.24" width="8.52" height="8.52" rx="1.53" fill="#8a5cd6"/>  <rect x="47.52" y="32.52" width="9.96" height="9.96" rx="1.79" fill="#8a5cd6"/>  <rect x="5.85" y="50.85" width="3.30" height="3.30" rx="0.59" fill="#ddd3c0"/>  <rect x="19.82" y="49.82" width="5.35" height="5.35" rx="0.96" fill="#c49a5a"/>  <rect x="34.44" y="49.44" width="6.12" height="6.12" rx="1.10" fill="#c49a5a"/>  <rect x="48.86" y="48.86" width="7.27" height="7.27" rx="1.31" fill="#c49a5a"/></svg>')
 
 
 def ruta(carpeta: str | Path) -> Path:
@@ -411,6 +414,7 @@ def generar(carpeta: str | Path, mapas: bool = True) -> Path:
     doc = (f'<!doctype html><html lang="es"><head><meta charset="utf-8">'
            f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{e(titulo)} · {anio}</title>'
            f"<style>{CSS}</style></head><body><main><header>"
+           f'<div class="marca">{ISOTIPO}<span>poblar</span></div>'
            f'<p class="antetitulo">Informe de ejecución · período {anio}</p><h1>{e(titulo)}</h1>'
            f'<p class="sub">Ejecución <code>{e(nombre)}</code> · generado el {fecha} UTC por poblar</p>'
            f'<div class="estado {clase}"><b>{e(estado)}</b><span>{e(det)}</span></div>{variante}</header>'
