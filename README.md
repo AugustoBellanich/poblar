@@ -25,7 +25,7 @@ En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipyn
 | 3 | Mapeo dasimétrico | ✔ |
 | 4 | Cruce con capas temáticas | ✔ |
 | 5 | Publicación (rasters) | ✔ |
-| 6 | Tablas de indicadores (país y TD, fórmulas de la CNULD) | en prueba |
+| 6 | Tablas de indicadores (país y TD, fórmulas de la CNULD) | ✔ |
 
 ### Productos de cada ejecución
 
