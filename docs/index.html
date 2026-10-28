@@ -102,6 +102,20 @@ border:2px solid var(--linea);z-index:1;transition:.15s}
 .ins .ej{margin-top:10px;font-size:.82rem;color:var(--suave);border-top:1px solid var(--linea);padding-top:8px}
 
 /* ---- simulador ---- */
+// Razón m_{r,a}/m_{r,Urbano} = <ámbito>_pxNoUrbano de 3_dasimetria/ponderadores.csv de cada ejecución
+const RAZONES = {
+  2022: {"Altos Andes, Monte y Puna":{Mixto:0.027924,Rural:0.001131},"Chaco":{Mixto:0.002204,Rural:0.000568},
+         "Pampa":{Mixto:0.000571,Rural:0.000164},"Patagonia":{Mixto:0.005320,Rural:0.000184},"Selva Paranaense":{Mixto:0.010740,Rural:0.003284}},
+  2010: {"Altos Andes, Monte y Puna":{Mixto:0.019975,Rural:0.001405},"Chaco":{Mixto:0.003320,Rural:0.000658},
+         "Pampa":{Mixto:0.004145,Rural:0.000169},"Patagonia":{Mixto:0.010647,Rural:0.000133},"Selva Paranaense":{Mixto:0.010461,Rural:0.003765}},
+};
+const dec = x => x === 0 ? 0 : x < 0.01 ? 4 : x < 1 ? 2 : x < 10 ? 1 : 0;
+function aplicarRegion(){
+  const v = $("#s-reg").value, amb = $("#s-amb").value;
+  if (!v || amb === "Urbano") return;
+  const [anio, reg] = v.split("|");
+  $("#s-r").value = Math.log10(RAZONES[anio][reg][amb]).toFixed(2);
+}
 .sim{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:20px;background:var(--papel);border:1px solid var(--linea);
 border-radius:14px;padding:18px}
 @media (max-width:760px){.sim{grid-template-columns:1fr}}
@@ -176,7 +190,9 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
       <div class="campo"><label for="s-u">Píxeles urbanos <output id="o-u"></output></label><input id="s-u" type="range" min="0" max="12" value="3"></div>
       <div class="campo"><label for="s-nu">Píxeles no urbanos <output id="o-nu"></output></label><input id="s-nu" type="range" min="0" max="12" value="6"></div>
       <div class="campo"><label for="s-nh">Píxeles no habitables <output id="o-nh"></output></label><input id="s-nh" type="range" min="0" max="8" value="2"></div>
-      <div class="campo"><label for="s-r">Razón de medianas \(m_{r,a}/m_{r,\text{Urbano}}\) <output id="o-r"></output></label><input id="s-r" type="range" min="0" max="1" step="0.01" value="0.2"></div>
+      <div class="campo"><label for="s-reg">Razón de medianas: valor del PRAIS 2026</label>
+        <select id="s-reg"><option value="">elegir a mano</option></select></div>
+      <div class="campo"><label for="s-r">Razón \(m_{r,a}/m_{r,\text{Urbano}}\) <output id="o-r"></output></label><input id="s-r" type="range" min="-4" max="0" step="0.01" value="-2.66"></div>
       <div class="campo"><label for="s-pu">Peso urbano</label>
         <select id="s-pu"><option value="complemento" selected>1 − peso no urbano (PRAIS 2026)</option><option value="uno">1</option></select></div>
     </div>
@@ -186,7 +202,7 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
       <div class="cuentas" id="cuentas"></div>
     </div>
   </div>
-  <p class="nota" style="color:var(--suave);font-size:.85rem">La razón de medianas sale de los datos: es la densidad típica (mediana) de los radios de ese tipo en la región, dividida por la de los radios urbanos de la misma región. Acá se elige a mano para ver su efecto.</p>
+  <p class="nota" style="color:var(--suave);font-size:.85rem">La razón de medianas sale de los datos (<code>3_dasimetria/ponderadores.csv</code>): es la densidad típica (mediana) de los radios de ese tipo en la región, dividida por la de los radios urbanos de la misma región. En el PRAIS 2026 va de 0,0002 a 0,03: un píxel no urbano pesa entre 36 y 6.000 veces menos que uno urbano. Se puede elegir la región y el período para usar el valor real, o moverla a mano (la barra es logarítmica).</p>
 </section>
 
 <section id="indicadores">
@@ -449,11 +465,26 @@ function renderInsumos(){
 }
 
 /* ---- simulador ---- */
+// Razón m_{r,a}/m_{r,Urbano} = <ámbito>_pxNoUrbano de 3_dasimetria/ponderadores.csv de cada ejecución
+const RAZONES = {
+  2022: {"Altos Andes, Monte y Puna":{Mixto:0.027924,Rural:0.001131},"Chaco":{Mixto:0.002204,Rural:0.000568},
+         "Pampa":{Mixto:0.000571,Rural:0.000164},"Patagonia":{Mixto:0.005320,Rural:0.000184},"Selva Paranaense":{Mixto:0.010740,Rural:0.003284}},
+  2010: {"Altos Andes, Monte y Puna":{Mixto:0.019975,Rural:0.001405},"Chaco":{Mixto:0.003320,Rural:0.000658},
+         "Pampa":{Mixto:0.004145,Rural:0.000169},"Patagonia":{Mixto:0.010647,Rural:0.000133},"Selva Paranaense":{Mixto:0.010461,Rural:0.003765}},
+};
+const dec = x => x === 0 ? 0 : x < 0.01 ? 4 : x < 1 ? 2 : x < 10 ? 1 : 0;
+function aplicarRegion(){
+  const v = $("#s-reg").value, amb = $("#s-amb").value;
+  if (!v || amb === "Urbano") return;
+  const [anio, reg] = v.split("|");
+  $("#s-r").value = Math.log10(RAZONES[anio][reg][amb]).toFixed(2);
+}
 const fmt = (x, d=0) => x.toLocaleString("es-AR", {minimumFractionDigits:d, maximumFractionDigits:d});
 function simular(){
   const P = +$("#s-pob").value, amb = $("#s-amb").value, U = +$("#s-u").value, N = +$("#s-nu").value, X = +$("#s-nh").value;
-  const r = +$("#s-r").value, pu = $("#s-pu").value;
-  $("#o-pob").textContent = fmt(P); $("#o-u").textContent = U; $("#o-nu").textContent = N; $("#o-nh").textContent = X; $("#o-r").textContent = fmt(r,2);
+  const r = Math.pow(10, +$("#s-r").value), pu = $("#s-pu").value;
+  $("#o-pob").textContent = fmt(P); $("#o-u").textContent = U; $("#o-nu").textContent = N; $("#o-nh").textContent = X;
+  $("#o-r").textContent = fmt(r, dec(r));
   let wnu = r, wu = pu === "uno" ? 1 : 1 - r;
   if (amb === "Urbano"){ wnu = 1; wu = 1; }
   const px = [...Array(U).fill("u"), ...Array(N).fill("nu"), ...Array(X).fill("nh")];
@@ -462,16 +493,16 @@ function simular(){
   if (total === 0){ caso = "sin"; valores = []; }
   else if (S === 0){ caso = "n2"; valores = px.map(() => P/total); }
   else { const f = P/S; valores = px.map(c => c==="u" ? f*wu : c==="nu" ? f*wnu : 0); }
-  $("#pixeles").innerHTML = px.map((c,i) => `<div class="px ${c}"><b>${fmt(valores[i], valores[i] < 10 && valores[i] > 0 ? 1 : 0)}</b><small>${c==="u"?"urbano":c==="nu"?"no urb.":"no hab."}</small></div>`).join("")
+  $("#pixeles").innerHTML = px.map((c,i) => `<div class="px ${c}"><b>${fmt(valores[i], dec(valores[i]))}</b><small>${c==="u"?"urbano":c==="nu"?"no urb.":"no hab."}</small></div>`).join("")
     || `<div class="nota" style="color:var(--suave)">Sin píxeles.</div>`;
   const suma = valores.reduce((a,b)=>a+b,0);
   let html = "";
   if (amb === "Urbano") html += `<p>En un radio <b>urbano</b> los dos pesos valen 1: la población se reparte pareja entre los píxeles habitables.</p>`;
   if (caso === "normal"){
-    html += `<div class="ec">\\(w^{\\text{U}}=${fmt(wu,2)}\\), \\(w^{\\text{NU}}=${fmt(wnu,2)}\\)<br>
-      \\(\\sum w = ${U}\\times${fmt(wu,2)} + ${N}\\times${fmt(wnu,2)} = ${fmt(S,2)}\\)<br>
-      \\(f = ${fmt(P)} / ${fmt(S,2)} = ${fmt(P/S,2)}\\) personas por unidad de peso</div>
-      <p>Cada píxel urbano recibe \\(f\\,w^{\\text{U}} = ${fmt(P/S*wu,1)}\\) y cada no urbano \\(f\\,w^{\\text{NU}} = ${fmt(P/S*wnu,1)}\\). Los no habitables, 0. Suma: <b>${fmt(suma)}</b> = población del radio.</p>`;
+    html += `<div class="ec">\\(w^{\\text{U}}=${fmt(wu,4)}\\), \\(w^{\\text{NU}}=${fmt(wnu,4)}\\)<br>
+      \\(\\sum w = ${U}\\times${fmt(wu,4)} + ${N}\\times${fmt(wnu,4)} = ${fmt(S,4)}\\)<br>
+      \\(f = ${fmt(P)} / ${fmt(S,4)} = ${fmt(P/S,2)}\\) personas por unidad de peso</div>
+      <p>Cada píxel urbano recibe \\(f\\,w^{\\text{U}} = ${fmt(P/S*wu,dec(P/S*wu))}\\) y cada no urbano \\(f\\,w^{\\text{NU}} = ${fmt(P/S*wnu,dec(P/S*wnu))}\\). Los no habitables, 0. Suma: <b>${fmt(suma)}</b> = población del radio.</p>`;
     if (U && N && amb !== "Urbano" && wu < wnu) html += `<div class="aviso">Con razón mayor que 0,5 y peso urbano complementario, el píxel urbano pesa menos que el no urbano. En los datos reales la mediana de los radios mixtos y rurales es mucho más baja que la urbana, así que la razón suele ser chica.</div>`;
   } else if (caso === "n2"){
     html += `<div class="aviso"><b>Contingencia de nivel 2:</b> el radio tiene píxeles pero ninguno con peso. Su población se reparte en partes iguales en todos sus píxeles: ${fmt(P)} / ${total} = ${fmt(P/total,1)} por píxel.</div>`;
@@ -496,7 +527,12 @@ function renderIndicadores(){
 
 window.addEventListener("DOMContentLoaded", () => {
   renderChips(); renderLista(); renderPanel(); renderInsumos(); renderIndicadores();
-  ["#s-pob","#s-amb","#s-u","#s-nu","#s-nh","#s-r","#s-pu"].forEach(s => $(s).addEventListener("input", simular));
+  $("#s-reg").innerHTML += [2022, 2010].map(a => `<optgroup label="Censo ${a}">` +
+    Object.keys(RAZONES[a]).map(r => `<option value="${a}|${r}">${r} (${a})</option>`).join("") + `</optgroup>`).join("");
+  $("#s-reg").value = "2022|Chaco"; aplicarRegion();
+  ["#s-reg","#s-amb"].forEach(s => $(s).addEventListener("input", () => { aplicarRegion(); simular(); }));
+  $("#s-r").addEventListener("input", () => { $("#s-reg").value = ""; simular(); });
+  ["#s-pob","#s-u","#s-nu","#s-nh","#s-pu"].forEach(s => $(s).addEventListener("input", simular));
   simular();
 });
 window.addEventListener("load", () => { matematica(document.body); simular(); });
