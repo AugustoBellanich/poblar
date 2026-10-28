@@ -149,12 +149,12 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
   <picture class="logo"><source media="(prefers-color-scheme: dark)" srcset="img/poblar_oscuro.svg"><img src="img/poblar.svg" alt="poblar · población expuesta a la degradación de tierras" height="56"></picture>
   <p class="ante">Documentación del método</p>
   <h1>Cómo se calcula la población expuesta a la degradación de tierras</h1>
-  <p class="bajada">Qué tienen que cumplir los insumos, qué hace cada etapa con ellos, con qué cálculos y criterios, qué controla y qué deja. Elegí una etapa para ver el detalle; los valores de ejemplo son los del método del PRAIS 2026.</p>
+  <p class="bajada">Qué tienen que cumplir los insumos, qué hace cada etapa con ellos, con qué cálculos y criterios, qué controla y qué deja. Al seleccionar una etapa se muestra su detalle; los valores de ejemplo son los del método del PRAIS 2026.</p>
   <div class="enlaces">
     <a href="https://github.com/AugustoBellanich/poblar">Repositorio</a>
     <a href="https://colab.research.google.com/github/AugustoBellanich/poblar/blob/main/cuadernos/ejecutar_en_colab.ipynb">Ejecutar en Colab</a>
     <a href="https://github.com/AugustoBellanich/poblar/blob/main/aplicaciones/prais2026/metodo.yaml">Método PRAIS 2026</a>
-    <a href="https://github.com/AugustoBellanich/poblar/blob/main/docs/configuracion.md">Todas las claves</a>
+    <a href="https://github.com/AugustoBellanich/poblar/blob/main/docs/configuracion.md">Parámetros de configuración</a>
   </div>
 </div></header>
 
@@ -166,7 +166,7 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
 
 <section id="recorrido">
   <h2>El recorrido</h2>
-  <p class="intro">Siete etapas, cada una con su carpeta de resultados. Tocá un insumo para ver qué etapas lo usan, o una etapa para ver qué hace por dentro.</p>
+  <p class="intro">Siete etapas, cada una con su carpeta de resultados. Al seleccionar un insumo se indican las etapas que lo utilizan; al seleccionar una etapa, su procedimiento interno.</p>
   <div class="recorrido">
     <div class="flujo">
       <div class="chips" id="chips" aria-label="Insumos"></div>
@@ -184,7 +184,7 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
 
 <section id="reparto">
   <h2>Probar el reparto dasimétrico</h2>
-  <p class="intro">El corazón del método (etapa 3): cómo se reparte la población de un radio entre sus píxeles según la cobertura. Cambiá los valores y mirá cómo se mueve la población; la suma siempre da la población del radio.</p>
+  <p class="intro">Etapa central del método (etapa 3): cómo se distribuye la población de un radio entre sus píxeles según la cobertura. Al modificar los valores se observa cómo se redistribuye la población; la suma de los píxeles siempre es igual a la población del radio.</p>
   <div class="sim">
     <div>
       <div class="campo"><label for="s-pob">Población del radio <output id="o-pob"></output></label><input id="s-pob" type="range" min="0" max="2000" step="10" value="600"></div>
@@ -205,7 +205,7 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
       <div class="cuentas" id="cuentas"></div>
     </div>
   </div>
-  <p class="nota" style="color:var(--suave);font-size:.85rem">La razón de medianas sale de los datos (<code>3_dasimetria/ponderadores.csv</code>): es la densidad típica (mediana) de los radios de ese tipo en la región, dividida por la de los radios urbanos de la misma región. En el PRAIS 2026 va de 0,0002 a 0,03: un píxel no urbano pesa entre 36 y 6.000 veces menos que uno urbano. Se puede elegir la región y el período para usar el valor real, o moverla a mano (la barra es logarítmica).</p>
+  <p class="nota" style="color:var(--suave);font-size:.85rem">La razón de medianas se calcula a partir de los datos (<code>3_dasimetria/ponderadores.csv</code>): es la densidad típica (mediana) de los radios de ese tipo en la región, dividida por la de los radios urbanos de la misma región. En el PRAIS 2026 va de 0,0002 a 0,03: un píxel no urbano pesa entre 36 y 6.000 veces menos que uno urbano. Se puede elegir la región y el período para usar el valor real, o moverla a mano (la barra es logarítmica).</p>
 </section>
 
 <section id="indicadores">
@@ -216,14 +216,14 @@ footer{margin-top:40px;border-top:1px solid var(--linea);padding:20px 0 40px;col
 
 <section id="trazabilidad">
   <h2>Trazabilidad</h2>
-  <p class="intro">Todo lo que pasa queda escrito en la carpeta de la ejecución.</p>
+  <p class="intro">Cada ejecución registra en su carpeta los resultados, los controles y los metadatos del proceso.</p>
   <div class="tres">
     <div><b>Controles</b><code>controles.csv</code>: cada verificación con su resultado. Una <span class="tipo bloq">bloqueante</span> que falla detiene la ejecución; una <span class="tipo adv">advertencia</span> queda registrada.</div>
-    <div><b>Balance</b><code>balance.csv</code>: los conteos de cada paso (radios, personas, píxeles) para seguir a dónde va cada persona.</div>
+    <div><b>Balance</b><code>balance.csv</code>: los conteos de cada paso (radios, personas, píxeles) para verificar la conservación de la población en cada paso.</div>
     <div><b>Huellas y entorno</b><code>manifiesto.csv</code> con el sha256 de cada archivo producido; <code>entorno.txt</code> con las versiones de Python, librerías, GDAL y el commit de poblar.</div>
     <div><b>Configuración</b><code>config.yaml</code> con el método y los insumos efectivos; copia del método y del registro usados.</div>
     <div><b>Informe</b><code>informe_&lt;nombre&gt;.html</code>: estado, controles por etapa, cifras, mapas y tablas, para abrir en el navegador.</div>
-    <div><b>Retomar y reutilizar</b>Una ejecución cortada se retoma desde lo guardado. Una variante del método copia de otra ejecución las etapas que darían lo mismo (<code>reutilizado.json</code>).</div>
+    <div><b>Retomar y reutilizar</b>Una ejecución interrumpida se reanuda desde el último resultado guardado. Una variante del método reutiliza los resultados de otra ejecución en las etapas cuyos insumos y parámetros no cambian (<code>reutilizado.json</code>).</div>
   </div>
 </section>
 </main>
@@ -246,16 +246,16 @@ const BLOQ = '<span class="tipo bloq">bloqueante</span>', ADV = '<span class="ti
 const ETAPAS = [
 { id:"insumos", n:0, titulo:"Insumos", sub:"existen, huella y metadatos", carpeta:"0_insumos",
   usa:["tabla_censo","radios","regiones","cobertura","degradacion"], archivo:"insumos.py",
-  resumen:"Antes de calcular nada, verifica que cada archivo exista y sea el que se dice que es, y anota cómo es.",
+  resumen:"Antes de cualquier cálculo, verifica la existencia de cada archivo, su identidad mediante la huella sha256, y registra sus metadatos.",
   pasos:`<ol>
    <li>Para cada insumo indicado, verifica que el archivo exista.</li>
    <li>Calcula su <b>sha256</b> leyendo por bloques (sirve para rasters de varios GB). Si el registro del período o el propio insumo declaran una huella, la compara.</li>
-   <li>Registra metadatos según el tipo: <b>tablas</b> (filas, columnas); <b>vectores</b> (registros contados de verdad, no solo los que dice el archivo; CRS; campos); <b>rasters</b> (ancho, alto, resolución, CRS, límites, nodata, tipo de dato, bandas).</li>
+   <li>Registra metadatos según el tipo: <b>tablas</b> (filas, columnas); <b>vectores</b> (cantidad de registros contada sobre los datos, no la declarada en los metadatos del archivo; CRS; campos); <b>rasters</b> (ancho, alto, resolución, CRS, límites, nodata, tipo de dato, bandas).</li>
    <li>Al retomar una ejecución con menos insumos, conserva los ya registrados que no se volvieron a dar.</li></ol>`,
-  calculo:`<p>No hay cálculos sobre los datos. La huella es</p><div class="ec">\\[ h = \\text{SHA-256}(\\text{archivo}) \\]</div><p class="nota">Dos archivos con el mismo sha256 tienen el mismo contenido, byte por byte. Es lo que permite decir que una cifra salió de un archivo determinado.</p>`,
+  calculo:`<p>No hay cálculos sobre los datos. La huella es</p><div class="ec">\\[ h = \\text{SHA-256}(\\text{archivo}) \\]</div><p class="nota">Dos archivos con el mismo sha256 tienen el mismo contenido, byte por byte. Esto permite garantizar que una cifra proviene de un archivo determinado.</p>`,
   criterios:[["registro (opcional)","huellas de los archivos oficiales","<code>periodos/2022.yaml</code>"]],
   controles:[["existe &lt;insumo&gt;",BLOQ,"el archivo está en la ruta indicada"],["sha256 &lt;insumo&gt;",BLOQ,"coincide con la huella declarada"],["&lt;vector&gt; no vacío",BLOQ,"tiene registros"]],
-  produce:[["insumos.csv","una fila por insumo: ruta, tamaño, sha256 y metadatos"],["insumos.json","lo mismo, con listas (límites, campos)"]],
+  produce:[["insumos.csv","una fila por insumo: ruta, tamaño, sha256 y metadatos"],["insumos.json","el mismo registro, con el detalle de límites y campos"]],
   funciones:[["registrar","recorre los insumos, controla y escribe las tablas"],["ruta_vector","un .zip se lee directo con /vsizip/"]] },
 
 { id:"radios", n:1, titulo:"Radios", sub:"tabla + mapa + región", carpeta:"1_radios",
@@ -263,17 +263,17 @@ const ETAPAS = [
   resumen:"Une los datos del censo con los polígonos de los radios, deja cada radio en una región y los ordena para rasterizar.",
   pasos:`<ol>
    <li><b>Tabla censal.</b> Lee el código <code>id_radio</code> como texto de 9 dígitos (completa con ceros a la izquierda) y convierte a número las columnas que empiezan con <code>pobla_</code>, <code>nbi_</code> o <code>agua_red_</code>.</li>
-   <li><b>Cartografía.</b> Si no se indica el campo de código, prueba cada campo del mapa y se queda con el que más códigos de la tabla encuentra (al menos el 50 %).</li>
+   <li><b>Cartografía.</b> Si no se indica el campo de código, evalúa cada campo del mapa y selecciona el de mayor coincidencia de códigos con la tabla (al menos el 50 %).</li>
    <li><b>Unión</b> por código. Con <code>inner</code> quedan los radios que están en la tabla y en el mapa; con <code>left</code>, todos los del mapa (sin dato censal, población 0). Los radios solo en la tabla quedan listados con su población.</li>
-   <li><b>Duplicados:</b> un código repetido se queda con la primera fila; los descartados quedan listados.</li>
+   <li><b>Duplicados:</b> ante códigos duplicados se conserva la primera fila; los descartados quedan listados.</li>
    <li><b>Geometrías:</b> quita las vacías, pasa al CRS de trabajo y repara las inválidas (<code>make_valid</code>).</li>
    <li><b>Región:</b> disuelve las regiones y asigna a cada radio la de mayor área de intersección. Un radio que no toca ninguna va a la más cercana si está dentro del umbral; si no, a la región «fuera».</li>
-   <li><b>Orden de rasterización:</b> ordena por área de mayor a menor y numera <code>raster_id</code> = 1, 2, … En la etapa 3, cuando dos radios tocan un píxel, se lo queda el último: así los radios chicos (urbanos) no desaparecen bajo los grandes.</li></ol>`,
+   <li><b>Orden de rasterización:</b> ordena por área de mayor a menor y numera <code>raster_id</code> = 1, 2, … En la etapa 3, cuando dos radios se superponen en un píxel, este se asigna al último rasterizado; como el orden es por área descendente, prevalece el de menor superficie y los radios urbanos pequeños no quedan sin píxeles.</li></ol>`,
   calculo:`<div class="ec"><p>Región del radio \\(i\\):</p>\\[ \\text{región}(i)=\\arg\\max_{g}\\ \\text{área}(i\\cap g) \\]<p>Sin intersección: la región \\(g\\) más cercana si \\(d(i,g)\\le\\) umbral; si no, «fuera».</p></div>
    <div class="ec">\\[ \\text{raster\\_id}:\\quad \\text{área}(1)\\ge\\text{área}(2)\\ge\\dots\\ge\\text{área}(n) \\]</div>`,
   criterios:[["radios.union","qué radios entran","<code>inner</code>"],["radios.id_desde","de dónde sale el código integrado","<code>tabla</code>"],["radios.orden","orden de rasterización","<code>area_desc</code>"],
     ["region.campo","campo de región","<code>Reg_PRAIS</code>"],["region.umbral_vecino_km","distancia máxima a la región más cercana","50 km"],
-    ["region.etiqueta_fuera","región de los radios lejanos","Fuera de Región (Antártida/Islas)"],["region.excluir_fuera","excluirlos","no (se conservan)"],["grilla_trabajo.crs","CRS de trabajo","EPSG:5347 (POSGAR 2007 / Argentina 4)"]],
+    ["region.etiqueta_fuera","región asignada a los radios que superan el umbral de distancia","Fuera de Región (Antártida/Islas)"],["region.excluir_fuera","excluirlos","no (se conservan)"],["grilla_trabajo.crs","CRS de trabajo","EPSG:5347 (POSGAR 2007 / Argentina 5)"]],
   controles:[["tabla sin ids repetidos",BLOQ,""],["población integrada = referencia",BLOQ,"2022: 45.618.784 · 2010: 40.114.872"],["sin ids repetidos",BLOQ,"después de unir"],["todos los radios con región",BLOQ,""],
     ["mujeres + varones = total",BLOQ,"por radio (configurable)"],["urbana + rural = total",BLOQ,"por radio (configurable)"],["NBI y agua de red ≤ población",BLOQ,"por radio (configurable)"],["resultado esperado: cantidad de radios",ADV,"2022: 66.421 · 2010: 52.378"]],
   produce:[["radios.parquet","un radio por fila: datos censales, región, área, raster_id y geometría"],["radios_sin_cartografia.csv","radios de la tabla sin polígono, con su población"],
@@ -284,9 +284,9 @@ const ETAPAS = [
   usa:["cobertura"], archivo:"grilla.py",
   resumen:"Define la grilla de píxeles en la que se va a repartir la población y clasifica cada píxel según la cobertura del suelo.",
   pasos:`<ol>
-   <li>Lleva la cobertura a la <b>grilla de trabajo</b> con <code>gdalwarp</code>: CRS métrico, extensión de los radios, vecino más cercano (la cobertura es categórica, no se promedia). Con <code>gdal_auto</code> la resolución la estima GDAL a partir de la del original (~80 m); con <code>fija</code>, la indicada, alineada.</li>
+   <li>Reproyecta y remuestrea la cobertura a la <b>grilla de trabajo</b> con <code>gdalwarp</code>: CRS métrico, extensión de los radios, vecino más cercano (la cobertura es categórica, no se promedia). Con <code>gdal_auto</code> la resolución la estima GDAL a partir de la del original (~80 m); con <code>fija</code>, la indicada, alineada.</li>
    <li><b>Reclasifica</b> cada clase en una metacategoría con una tabla de búsqueda, recorriendo el raster por franjas: <b>0 no habitable</b>, <b>1 urbano</b>, <b>2 no urbano</b>.</li>
-   <li>Cuenta qué clases aparecen de verdad y cuántos píxeles hay de cada metacategoría.</li></ol>`,
+   <li>Contabiliza las clases efectivamente presentes y la cantidad de píxeles de cada metacategoría.</li></ol>`,
   calculo:`<div class="ec">\\[ \\text{meta}(p)=\\text{LUT}[\\text{clase}(p)]\\in\\{0,1,2\\} \\]</div>
    <div class="tabla-env"><table class="tabla"><tr><th>Clase MapBiomas</th><th>Metacategoría</th></tr>
    <tr><td>8 Áreas urbanas</td><td>urbano</td></tr>
@@ -301,7 +301,7 @@ const ETAPAS = [
   usa:[], archivo:"dasimetria.py",
   resumen:"Reparte la población de cada radio entre sus píxeles, con más peso donde la cobertura indica asentamiento, y deriva un raster por cada variable.",
   pasos:`<ol>
-   <li><b>Raster de radios:</b> <code>gdal_rasterize -at</code> del <code>raster_id</code> sobre la grilla de trabajo; cada polígono marca todos los píxeles que toca y, si dos se pisan, gana el último (el más chico).</li>
+   <li><b>Raster de radios:</b> <code>gdal_rasterize -at</code> del <code>raster_id</code> sobre la grilla de trabajo; cada polígono marca todos los píxeles que toca y, si dos se superponen, el píxel se asigna al último rasterizado (el de menor superficie).</li>
    <li><b>Composición</b> de cada radio: píxeles urbanos \\(U_i\\), no urbanos \\(N_i\\) y totales.</li>
    <li><b>Ponderadores</b> por región y tipo de radio, a partir de la mediana de la densidad.</li>
    <li><b>Factor</b> de cada radio y población de cada píxel.</li>
@@ -315,20 +315,20 @@ const ETAPAS = [
    <div class="ec"><p><b>Peso del píxel</b> \\(p\\) del radio \\(i\\): \\(w^{\\text{U}}\\) si es urbano, \\(w^{\\text{NU}}\\) si es no urbano, 0 si es no habitable.</p>
    \\[ f_i=\\frac{P_i}{\\sum_{p\\in i} w_p}\\qquad \\text{pob}(p)=f_i\\,w_p\\qquad \\sum_{p\\in i}\\text{pob}(p)=P_i \\]</div>
    <div class="ec"><p><b>Contingencia de nivel 2</b> (con píxeles, ninguno habitable): reparto en partes iguales, \\(\\text{pob}(p)=P_i/n_i\\).</p>
-   <p><b>Contingencia de nivel 3</b> (ningún píxel propio, lo taparon radios más chicos): \\(P_i/n_i^{\\text{toca}}\\) se suma en los píxeles que toca su polígono.</p></div>
-   <div class="ec"><p><b>Variables</b>, con la tasa del radio dueño del píxel:</p>\\[ V(p)=\\text{pob}(p)\\cdot\\frac{V_i}{P_i} \\]</div>
+   <p><b>Contingencia de nivel 3</b> (el radio no tiene píxeles asignados porque todos quedaron asignados a radios de menor superficie): \\(P_i/n_i^{\\text{toca}}\\) se suma en los píxeles que toca su polígono.</p></div>
+   <div class="ec"><p><b>Variables</b>, con la tasa del radio al que está asignado el píxel:</p>\\[ V(p)=\\text{pob}(p)\\cdot\\frac{V_i}{P_i} \\]</div>
    <p class="nota">Por el nivel 3, una parte de la población queda en píxeles de otro radio y toma su tasa: el total de población se conserva exacto y las variables pueden diferir del censo en unas pocas personas (advertencia esperable).</p>`,
   criterios:[["dasimetria.campo_ambito","tipo de radio en la tabla","<code>ambito</code>: Urbano, Mixto, Rural"],["dasimetria.ponderadores.normalizar_por","ámbito de referencia","Urbano"],["dasimetria.ponderadores.peso_urbano","peso del píxel urbano","<code>complemento</code> (1 − peso no urbano)"],["dasimetria.variables","rasters a derivar","18 variables (NBI, agua, sexo, ámbito y cruces)"]],
-  controles:[["conservación de la población (total)",BLOQ,"tolerancia 0,001 %. 2022: 45.618.783,995 en el raster"],["conservación por radio",BLOQ,"diferencia ≤ 0,5 personas, salvo nivel 3"],["conservación de cada variable",ADV,"misma tolerancia; puede saltar por el nivel 3"],["resultado esperado: población del raster",ADV,""]],
-  produce:[["poblacion_dasimetrica_&lt;año&gt;.tif","personas por píxel"],["&lt;variable&gt;_dasimetrico_&lt;año&gt;.tif","un raster por variable"],["raster_ids_radios.tif","dueño de cada píxel"],["pesos_dasimetricos.tif",""],["ponderadores.csv","la matriz región × tipo de radio"],["contingencias.csv","radios de nivel 2 y 3"],["radios_factores.parquet","composición, pesos y factor por radio"]],
-  funciones:[["rasterizar_ids","gdal_rasterize del raster_id"],["composicion","píxeles por clase y radio (bincount)"],["calcular_ponderadores","medianas y razón al ámbito urbano"],["construir","factor, contingencias, población y variables"],["_estampar_nivel3","reparto sobre el polígono de los radios tapados"]] },
+  controles:[["conservación de la población (total)",BLOQ,"tolerancia 0,001 %. 2022: 45.618.783,995 en el raster"],["conservación por radio",BLOQ,"diferencia ≤ 0,5 personas, salvo nivel 3"],["conservación de cada variable",ADV,"misma tolerancia; puede generar una advertencia cuando interviene la contingencia de nivel 3"],["resultado esperado: población del raster",ADV,""]],
+  produce:[["poblacion_dasimetrica_&lt;año&gt;.tif","personas por píxel"],["&lt;variable&gt;_dasimetrico_&lt;año&gt;.tif","un raster por variable"],["raster_ids_radios.tif","radio asignado a cada píxel"],["pesos_dasimetricos.tif",""],["ponderadores.csv","la matriz región × tipo de radio"],["contingencias.csv","radios de nivel 2 y 3"],["radios_factores.parquet","composición, pesos y factor por radio"]],
+  funciones:[["rasterizar_ids","gdal_rasterize del raster_id"],["composicion","píxeles por clase y radio (bincount)"],["calcular_ponderadores","medianas y razón al ámbito urbano"],["construir","factor, contingencias, población y variables"],["_estampar_nivel3","reparto sobre el polígono de los radios sin píxeles asignados"]] },
 
 { id:"cruce", n:4, titulo:"Cruce con degradación", sub:"población × categoría", carpeta:"4_cruce",
   usa:["degradacion"], archivo:"cruce.py",
   resumen:"Superpone la población con el mapa de degradación y suma cuántas personas hay en cada categoría, por región y tipo de radio.",
   pasos:`<ol>
-   <li>Lleva el mapa de degradación exactamente a la grilla de población (<code>gdalwarp</code> con la misma extensión, resolución y tamaño; vecino más cercano; banda indicada).</li>
-   <li>A cada píxel le asigna la <b>zona</b> región × tipo de radio de su radio dueño.</li>
+   <li>Reproyecta y remuestrea el mapa de degradación exactamente a la grilla de población (<code>gdalwarp</code> con la misma extensión, resolución y tamaño; vecino más cercano; banda indicada).</li>
+   <li>A cada píxel le asigna la <b>zona</b> región × tipo de radio del radio al que está asignado.</li>
    <li>Recorriendo por bloques, suma cada variable por zona y categoría. Los píxeles sin radio o sin dato en el mapa no entran y su población se informa.</li>
    <li>Agrupa las categorías en el <b>binario</b> degradada / no degradada (la clase «sin datos» queda afuera) y los tipos de radio en el <b>ámbito de reporte</b> (Mixto → Rural).</li>
    <li>Calcula en la tabla las variables derivadas: agua sin red = población − agua de red.</li></ol>`,
@@ -343,11 +343,11 @@ const ETAPAS = [
 
 { id:"publicacion", n:5, titulo:"Publicación", sub:"capas de entrega", carpeta:"5_publicacion",
   usa:["cobertura"], archivo:"publicacion.py",
-  resumen:"Lleva los rasters de población a la grilla de entrega (la de la cobertura en EPSG:4326) sin perder personas.",
+  resumen:"Reproyecta los rasters de población a la grilla de entrega (la de la cobertura en EPSG:4326) conservando la población total.",
   pasos:`<ol>
    <li>Para cada producto indicado, reproyecta a la grilla del insumo de referencia con <b>remuestreo por suma</b>: cada píxel de destino recibe la suma de las personas que caen en él.</li>
    <li>Recorre el destino por bloques de 1024 × 1024 para no cargar el raster entero en memoria.</li>
-   <li>Procesa varios rasters en paralelo; cada uno se guarda apenas termina. Si la ejecución se corta, al retomarla se saltean los ya publicados.</li>
+   <li>Procesa varios rasters en paralelo; cada uno se guarda al finalizar. Si la ejecución se interrumpe, al reanudarla se omiten los ya publicados.</li>
    <li>Nombra cada capa con la plantilla del método (<code>OE2-3.Pob_dasim_100m_wgs84_2022.tif</code>, …).</li></ol>`,
   calculo:`<div class="ec">\\[ \\text{pob}'(q)=\\sum_{p\\,\\to\\,q}\\text{pob}(p)\\qquad \\Delta=\\frac{\\sum_q \\text{pob}'(q)-\\sum_p\\text{pob}(p)}{\\sum_p\\text{pob}(p)} \\]
    <p class="nota">2022: suma de origen 45.618.784, publicada 45.618.854; diferencia +70 personas (0,00015 %).</p></div>
@@ -359,7 +359,7 @@ const ETAPAS = [
 
 { id:"tablas", n:6, titulo:"Tablas de indicadores", sub:"país y tierras degradadas", carpeta:"6_tablas",
   usa:[], archivo:"tablas.py",
-  resumen:"Junta las cantidades del país (censo) y de las tierras degradadas (cruce) y calcula los indicadores con la fórmula que corresponde a cada uno.",
+  resumen:"Integra los totales del país (censo) y de las tierras degradadas (cruce) y calcula los indicadores con la fórmula que corresponde a cada uno.",
   pasos:`<ol>
    <li><b>País:</b> suma los campos de la tabla censal sobre los radios integrados, por región y grupo (total, mujeres, varones, urbano, rural).</li>
    <li><b>Tierras degradadas:</b> toma del cruce las filas del grupo expuesto.</li>
@@ -437,7 +437,7 @@ const TARJETAS = [
    "Población: <code>pobla_total</code>, <code>pobla_mujer</code>, <code>pobla_varon</code>, <code>pobla_total_urbana</code>, <code>pobla_total_rural</code> y los cruces sexo × ámbito.",
    "NBI y agua de red: <code>nbi_total</code>, <code>agua_red_total</code> y sus desagregados por sexo y ámbito.",
    "<code>ambito</code>: tipo de radio (Urbano, Mixto, Rural).",
-   "Debe cerrar: mujeres + varones = total; urbana + rural = total; NBI y agua ≤ población."],
+   "Condiciones de consistencia: mujeres + varones = total; urbana + rural = total; NBI y agua ≤ población."],
    "PRAIS 2026: tabla_censo2022.xlsx · tabla_censo2010.xlsx (Redatam, INDEC)."],
  ["Cartografía de radios","radios",[
    "Shapefile (también comprimido en .zip) o GeoPackage; cualquier CRS.",
@@ -500,17 +500,17 @@ function simular(){
     || `<div class="nota" style="color:var(--suave)">Sin píxeles.</div>`;
   const suma = valores.reduce((a,b)=>a+b,0);
   let html = "";
-  if (amb === "Urbano") html += `<p>En un radio <b>urbano</b> los dos pesos valen 1: la población se reparte pareja entre los píxeles habitables.</p>`;
+  if (amb === "Urbano") html += `<p>En un radio <b>urbano</b> los dos pesos valen 1: la población se distribuye de manera uniforme entre los píxeles habitables.</p>`;
   if (caso === "normal"){
     html += `<div class="ec">\\(w^{\\text{U}}=${fmt(wu,4)}\\), \\(w^{\\text{NU}}=${fmt(wnu,4)}\\)<br>
       \\(\\sum w = ${U}\\times${fmt(wu,4)} + ${N}\\times${fmt(wnu,4)} = ${fmt(S,4)}\\)<br>
       \\(f = ${fmt(P)} / ${fmt(S,4)} = ${fmt(P/S,2)}\\) personas por unidad de peso</div>
       <p>Cada píxel urbano recibe \\(f\\,w^{\\text{U}} = ${fmt(P/S*wu,dec(P/S*wu))}\\) y cada no urbano \\(f\\,w^{\\text{NU}} = ${fmt(P/S*wnu,dec(P/S*wnu))}\\). Los no habitables, 0. Suma: <b>${fmt(suma)}</b> = población del radio.</p>`;
-    if (U && N && amb !== "Urbano" && wu < wnu) html += `<div class="aviso">Con razón mayor que 0,5 y peso urbano complementario, el píxel urbano pesa menos que el no urbano. En los datos reales la mediana de los radios mixtos y rurales es mucho más baja que la urbana, así que la razón suele ser chica.</div>`;
+    if (U && N && amb !== "Urbano" && wu < wnu) html += `<div class="aviso">Con razón mayor que 0,5 y peso urbano complementario, el píxel urbano pesa menos que el no urbano. En los datos reales la mediana de los radios mixtos y rurales es mucho más baja que la urbana, por lo que la razón suele ser baja.</div>`;
   } else if (caso === "n2"){
     html += `<div class="aviso"><b>Contingencia de nivel 2:</b> el radio tiene píxeles pero ninguno con peso. Su población se reparte en partes iguales en todos sus píxeles: ${fmt(P)} / ${total} = ${fmt(P/total,1)} por píxel.</div>`;
   } else {
-    html += `<div class="aviso"><b>Contingencia de nivel 3:</b> el radio no tiene ningún píxel propio (lo taparon radios más chicos). Su población se reparte en partes iguales en los píxeles que toca su polígono y se suma a lo que ya tienen.</div>`;
+    html += `<div class="aviso"><b>Contingencia de nivel 3:</b> el radio no tiene píxeles asignados porque todos quedaron asignados a radios de menor superficie. Su población se reparte en partes iguales en los píxeles que toca su polígono y se suma a lo que ya tienen.</div>`;
   }
   $("#cuentas").innerHTML = html; matematica($("#cuentas"));
 }

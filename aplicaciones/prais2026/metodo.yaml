@@ -21,7 +21,7 @@ region:
   excluir_fuera: false        # se conservan (Antártida e islas del Atlántico Sur)
 
 grilla_trabajo:
-  crs: 5347                   # POSGAR 2007 / Argentina 4 (métrico)
+  crs: 5347                   # POSGAR 2007 / Argentina 5 (métrico)
   modo: gdal_auto             # resolución estimada por GDAL a partir de la cobertura (~80 m)
   extension: radios           # límites de los radios
   remuestreo_cobertura: near  # vecino más cercano (la cobertura es categórica)
