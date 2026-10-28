@@ -5,6 +5,9 @@
 
 aplicacion: prais2026
 
+informe:
+  titulo: "Población expuesta a la degradación de tierras · OE2 PRAIS 2026"
+
 radios:
   union: inner                # solo radios presentes en la tabla y en el mapa (los demás quedan registrados)
   id_desde: tabla

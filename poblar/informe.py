@@ -56,6 +56,24 @@ figure img{width:100%;height:auto;max-height:520px;object-fit:contain;display:bl
 .mapas.chicos figure img{max-height:300px}figcaption{color:#555;font-size:.8rem;padding:4px 4px 0}
 .nota{color:var(--suave);font-size:.85rem}.etiqueta{display:inline-block;padding:1px 8px;border-radius:99px;
 font-size:.75rem;font-weight:600;border:1px solid currentColor}code{font-size:.85em}
+header{border-bottom:1px solid var(--linea);padding-bottom:16px}.antetitulo{color:var(--acento);font-weight:600;
+font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;margin:0 0 6px}
+.estado{display:flex;gap:12px;align-items:center;margin-top:14px;padding:12px 16px;border-radius:10px;
+background:var(--papel);border:1px solid var(--linea);border-left:5px solid currentColor}
+.estado b{font-size:1rem}.estado span{color:var(--suave);font-size:.88rem}
+.etapas{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start}
+.etapa{background:var(--papel);border:1px solid var(--linea);border-radius:10px;padding:12px 14px}
+.etapa summary{cursor:pointer;list-style:none}.etapa summary::-webkit-details-marker{display:none}
+.etapa .cab{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.etapa .nombre{font-weight:600}.etapa .que{color:var(--suave);font-size:.82rem;margin:2px 0 8px}
+.etapa .cuenta{font-variant-numeric:tabular-nums;font-size:.85rem;white-space:nowrap}
+.barra{display:flex;height:8px;border-radius:99px;overflow:hidden;background:var(--linea)}
+.barra i{display:block}.barra .b-ok{background:var(--ok)}.barra .b-adv{background:var(--adv)}.barra .b-falla{background:var(--falla)}
+.etapa ul{list-style:none;margin:10px 0 0;padding:0;font-size:.84rem}
+.etapa li{display:grid;grid-template-columns:18px 1fr;gap:6px;padding:4px 0;border-top:1px solid var(--linea)}
+.etapa li .d{grid-column:2;color:var(--suave);font-size:.8rem}.ver{color:var(--acento);font-size:.8rem}
+details[open] .ver{display:none}
+.explica{grid-column:2;background:var(--tabla);border-radius:6px;padding:6px 8px;font-size:.8rem;margin-top:4px}
 """
 
 
@@ -84,11 +102,26 @@ def _figura(src: str, pie: str) -> str:
     return f'<figure><img src="{src}" alt="{html.escape(pie)}"><figcaption>{html.escape(pie)}</figcaption></figure>'
 
 
-def _nota_conservacion(c: Path, no: pd.DataFrame) -> str:
-    """Explica las advertencias de conservación de variables de la etapa 3 (ejecuciones que no la traen)."""
+ETAPAS = {
+    "0_insumos": ("Insumos", "Que existan, con su huella sha256 y sus metadatos"),
+    "1_radios": ("Radios", "Unión de la tabla censal con la cartografía y asignación de región"),
+    "2_grilla": ("Grilla y cobertura", "Cobertura en la grilla de trabajo, en urbano / no urbano / no habitable"),
+    "3_dasimetria": ("Mapeo dasimétrico", "Población de cada radio repartida en sus píxeles, sin perder personas"),
+    "4_cruce": ("Cruce con degradación", "Población por región, ámbito y categoría de degradación"),
+    "5_publicacion": ("Publicación", "Capas en la grilla de entrega, conservando el total de personas"),
+    "6_tablas": ("Tablas", "Indicadores del país y de las tierras degradadas, con cierres por sexo y ámbito"),
+}
+
+
+def _explicacion_conservacion(c: Path, no: pd.DataFrame) -> str:
+    """Explica las advertencias de conservación de variables de la etapa 3.
+
+    Las cifras salen de la ejecución: radios y personas de ``3_dasimetria/contingencias.csv``
+    (contingencia de nivel 3) y diferencias de los controles (``valor`` − ``esperado``).
+    """
     sel = no[(no["etapa"] == "3_dasimetria") & no["nombre"].str.startswith("conservación de ")
              & ~no["nombre"].str.contains("población")]
-    if sel.empty or sel["detalle"].str.contains("Esperable").all():
+    if sel.empty:
         return ""
     cont = _leer(c / "3_dasimetria" / "contingencias.csv")
     if cont is None or "tipo_asignacion" not in cont.columns:
@@ -96,11 +129,14 @@ def _nota_conservacion(c: Path, no: pd.DataFrame) -> str:
     n3 = cont[cont["tipo_asignacion"] == "contingencia_extrema"]
     if n3.empty:
         return ""
-    return ("<p class='nota'>Las advertencias de conservación de variables de la etapa 3 son esperables: "
-            f"{len(n3)} radios ({_num(n3['pobla_total'].sum(), 0)} personas) no tienen píxeles propios "
-            "(contingencia de nivel 3); su población se reparte en píxeles de radios vecinos y toma las tasas "
-            "de esos radios. La población total se conserva; las variables pueden diferir del censo en unas "
-            "decenas o cientos de personas. Detalle en <code>3_dasimetria/contingencias.csv</code>.</p>")
+    dif = (pd.to_numeric(sel["valor"], errors="coerce") - pd.to_numeric(sel["esperado"], errors="coerce")).abs()
+    pct = 100 * dif / pd.to_numeric(sel["esperado"], errors="coerce")
+    rango = (f" En esta ejecución la mayor diferencia es de {_num(dif.max(), 0)} personas "
+             f"({_num(pct.max(), 4)} %).") if dif.notna().any() else ""
+    return ("Esperable: " f"{len(n3)} radios ({_num(n3['pobla_total'].sum(), 0)} personas) no tienen píxeles propios "
+            "(contingencia de nivel 3). Su población se reparte en píxeles de radios vecinos y toma las tasas "
+            "de esos radios: la población total se conserva, pero las variables pueden diferir algo del censo."
+            f"{rango} Detalle en <code>3_dasimetria/contingencias.csv</code>.")
 
 
 def _numeros_es(texto: str) -> str:
@@ -132,26 +168,58 @@ def _leer(ruta: Path) -> pd.DataFrame | None:
     return pd.read_csv(ruta) if ruta.exists() else None
 
 
+def _estado(ctrl: pd.DataFrame | None) -> tuple[str, str, str]:
+    """(clase, título, detalle) del estado general de la ejecución."""
+    if ctrl is None or ctrl.empty:
+        return "adv", "Sin controles", "La ejecución no registró controles."
+    ok = ctrl["ok"].astype(str).str.lower() == "true"
+    bloq = ctrl["bloqueante"].astype(str).str.lower() == "true"
+    n_adv, n_falla = int((~ok & ~bloq).sum()), int((~ok & bloq).sum())
+    if n_falla:
+        return "falla", "Ejecución detenida", f"{n_falla} control(es) bloqueante(s) sin cumplir. Ver Controles."
+    if n_adv:
+        return "adv", "Completa, con advertencias", f"{n_adv} advertencia(s) para revisar. Ver Controles."
+    return "ok", "Completa: todos los controles cumplidos", f"{len(ctrl)} controles en {ctrl['etapa'].nunique()} etapas."
+
+
 def _seccion_controles(c: Path) -> str:
     ctrl = _leer(c / "controles.csv")
     if ctrl is None:
         return "<p class='nota'>Sin controles registrados.</p>"
-    ok = ctrl["ok"].astype(str).str.lower() == "true"
-    bloq = ctrl["bloqueante"].astype(str).str.lower() == "true"
-    n_ok, n_adv, n_falla = int(ok.sum()), int((~ok & ~bloq).sum()), int((~ok & bloq).sum())
-    tarjetas = (f'<div class="grilla"><div class="tarjeta"><div class="n ok">{n_ok}</div><div class="l">controles cumplidos</div></div>'
-                f'<div class="tarjeta"><div class="n adv">{n_adv}</div><div class="l">advertencias</div></div>'
-                f'<div class="tarjeta"><div class="n falla">{n_falla}</div><div class="l">fallas bloqueantes</div></div></div>')
-    por_etapa = (ctrl.assign(ok=ok).groupby("etapa")["ok"].agg(cumplidos="sum", total="size").reset_index())
-    detalle = ""
-    if (~ok).any():
-        no = ctrl[~ok].assign(tipo=["falla" if b else "advertencia" for b in bloq[~ok]])
-        no["detalle"] = no["detalle"].astype(str).map(_numeros_es)
-        detalle = "<h3>Controles no cumplidos</h3>" + _tabla_html(
-            no[["etapa", "nombre", "detalle", "tipo"]].rename(columns=str.capitalize),
-            texto=("Etapa", "Nombre", "Detalle", "Tipo"))
-        detalle += _nota_conservacion(c, no)
-    return tarjetas + "<h3>Por etapa</h3>" + _tabla_html(por_etapa.rename(columns=str.capitalize)) + detalle
+    ctrl = ctrl.assign(ok=ctrl["ok"].astype(str).str.lower() == "true",
+                       bloqueante=ctrl["bloqueante"].astype(str).str.lower() == "true")
+    ctrl["clase"] = ["ok" if o else ("falla" if b else "adv") for o, b in zip(ctrl["ok"], ctrl["bloqueante"])]
+    n = ctrl["clase"].value_counts()
+    tarjetas = (f'<div class="grilla"><div class="tarjeta"><div class="n ok">{n.get("ok", 0)}</div><div class="l">controles cumplidos</div></div>'
+                f'<div class="tarjeta"><div class="n adv">{n.get("adv", 0)}</div><div class="l">advertencias</div></div>'
+                f'<div class="tarjeta"><div class="n falla">{n.get("falla", 0)}</div><div class="l">fallas bloqueantes</div></div></div>')
+    no = ctrl[~ctrl["ok"]]
+    explica = _explicacion_conservacion(c, no) if len(no) else ""
+    iconos = {"ok": "✓", "adv": "!", "falla": "✕"}
+    tarjetas_etapa = []
+    for etapa, g in ctrl.groupby("etapa", sort=True):
+        nombre, que = ETAPAS.get(etapa, (etapa, ""))
+        k = g["clase"].value_counts()
+        tot = len(g)
+        barra = "".join(f'<i class="b-{cl}" style="width:{100 * k.get(cl, 0) / tot:.2f}%"></i>'
+                        for cl in ("ok", "adv", "falla"))
+        cl_etapa = "falla" if k.get("falla") else ("adv" if k.get("adv") else "ok")
+        items = []
+        for _, f in g.sort_values("clase", key=lambda s: s.map({"falla": 0, "adv": 1, "ok": 2})).iterrows():
+            items.append(f'<li><span class="{f["clase"]}">{iconos[f["clase"]]}</span><span>{html.escape(str(f["nombre"]))}</span>'
+                         f'<span class="d">{html.escape(_numeros_es(str(f["detalle"])))}</span></li>')
+        if etapa == "3_dasimetria" and explica and not g["detalle"].astype(str).str.contains("Esperable").any():
+            items.insert(int((g["clase"] != "ok").sum()), f'<li><span></span><div class="explica">{explica}</div></li>')
+        abierta = " open" if cl_etapa != "ok" else ""
+        tarjetas_etapa.append(
+            f'<details class="etapa"{abierta}><summary><div class="cab"><span class="nombre">'
+            f'<span class="{cl_etapa}">{iconos[cl_etapa]}</span> {etapa[0]} · {html.escape(nombre)}</span>'
+            f'<span class="cuenta">{k.get("ok", 0)}/{tot}</span></div><div class="que">{html.escape(que)}</div>'
+            f'<div class="barra">{barra}</div><span class="ver">Ver controles</span></summary>'
+            f'<ul>{"".join(items)}</ul></details>')
+    return (tarjetas + "<h3>Por etapa</h3><p class='nota'>Cada etapa con sus controles: ✓ cumplido, ! advertencia, "
+            "✕ falla. Las etapas con algo para revisar aparecen abiertas.</p>"
+            f'<div class="etapas">{"".join(tarjetas_etapa)}</div>')
 
 
 def _seccion_cifras(c: Path, cfg: dict[str, Any]) -> str:
@@ -282,8 +350,19 @@ def _seccion_ejecucion(c: Path, cfg: dict[str, Any]) -> str:
             "<code>manifiesto.csv</code>.</p>")
 
 
+TITULO_POR_DEFECTO = "Población expuesta a la degradación de tierras"
+
+
+def ruta(carpeta: str | Path) -> Path:
+    """Ruta del informe de una ejecución: ``informe_<nombre>.html`` (o ``informe.html``, de versiones anteriores)."""
+    c = Path(carpeta)
+    nuevo = c / f"informe_{c.name}.html"
+    viejo = c / "informe.html"
+    return viejo if viejo.exists() and not nuevo.exists() else nuevo
+
+
 def generar(carpeta: str | Path, mapas: bool = True) -> Path:
-    """Escribe ``informe.html`` en la carpeta de la ejecución y devuelve su ruta.
+    """Escribe ``informe_<nombre>.html`` en la carpeta de la ejecución y devuelve su ruta.
 
     Args:
         carpeta: Carpeta de la ejecución.
@@ -298,13 +377,28 @@ def generar(carpeta: str | Path, mapas: bool = True) -> Path:
         secciones.append(("Mapas", _seccion_mapas(c, cfg)))
     secciones += [("Tablas de indicadores", _seccion_tablas(c)), ("Ejecución", _seccion_ejecucion(c, cfg))]
     cuerpo = "".join(f"<h2>{t}</h2>{h}" for t, h in secciones)
-    titulo = html.escape(str(cfg.get("nombre", c.name)))
+    titulo = str(obtener_titulo(cfg))
+    anio = cfg.get("anio_censo", "")
+    nombre = str(cfg.get("nombre", c.name))
+    clase, estado, det = _estado(_leer(c / "controles.csv"))
+    fecha = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+    e = html.escape
     doc = (f'<!doctype html><html lang="es"><head><meta charset="utf-8">'
-           f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>Informe {titulo}</title>'
-           f"<style>{CSS}</style></head><body><main><h1>{titulo}</h1>"
-           f'<p class="sub">Año {cfg.get("anio_censo", "")} · informe generado el '
-           f'{datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")} UTC por poblar</p>{cuerpo}</main></body></html>')
-    ruta = c / "informe.html"
-    ruta.write_text(doc, encoding="utf-8")
-    log.info("Informe: %s", ruta)
-    return ruta
+           f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>{e(titulo)} · {anio}</title>'
+           f"<style>{CSS}</style></head><body><main><header>"
+           f'<p class="antetitulo">Informe de ejecución · período {anio}</p><h1>{e(titulo)}</h1>'
+           f'<p class="sub">Ejecución <code>{e(nombre)}</code> · generado el {fecha} UTC por poblar</p>'
+           f'<div class="estado {clase}"><b>{e(estado)}</b><span>{e(det)}</span></div></header>'
+           f"{cuerpo}</main></body></html>")
+    destino = c / f"informe_{c.name}.html"
+    destino.write_text(doc, encoding="utf-8")
+    viejo = c / "informe.html"
+    if viejo.exists():
+        viejo.unlink()
+    log.info("Informe: %s", destino)
+    return destino
+
+
+def obtener_titulo(cfg: dict[str, Any]) -> str:
+    """Título del informe: ``informe.titulo`` del método o el título por defecto."""
+    return (cfg.get("informe") or {}).get("titulo") or TITULO_POR_DEFECTO

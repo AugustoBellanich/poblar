@@ -64,7 +64,7 @@ Cada etapa verifica lo que produce y lo deja en `controles.csv`: población cons
 
 ```
 ejecuciones/<nombre>/
-  informe.html                        controles, cifras, mapas y tablas, para abrir en el navegador
+  informe_<nombre>.html               controles, cifras, mapas y tablas, para abrir en el navegador
   config.yaml                         configuración efectiva (método + año + insumos)
   metodo.yaml, registro.yaml          copias de los archivos usados
   entorno.txt                         versiones de Python, librerías, GDAL y commit de poblar

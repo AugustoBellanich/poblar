@@ -432,7 +432,7 @@ def test_informe_y_vistas(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
 
     metodo, rutas = _metodo_y_archivos(tmp_path, insumos)
     e = ejecutar(metodo, anio=2010, insumos=rutas, salida=tmp_path / "ejecuciones")
-    informe = (e.carpeta / "informe.html").read_text(encoding="utf-8")
+    informe = (e.carpeta / f"informe_{e.carpeta.name}.html").read_text(encoding="utf-8")
     for texto in ("Controles", "Resultados", "Mapas", "data:image/png;base64", "Tablas de indicadores"):
         assert texto in informe
     assert {"poblacion", "degradacion", "expuesta", "cobertura"} <= set(vista.productos(e.carpeta))
@@ -443,7 +443,7 @@ def test_informe_y_vistas(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
 def test_informe_explica_advertencias_de_conservacion(tmp_path: Path) -> None:
     import pandas as pd
 
-    from poblar.informe import _nota_conservacion, _numeros_es
+    from poblar.informe import _explicacion_conservacion, _numeros_es
 
     assert _numeros_es("raster 4,297,055.6 vs censo 4,297,176 (dif -120.4)") == \
         "raster 4.297.055,6 vs censo 4.297.176 (dif -120,4)"
@@ -452,8 +452,7 @@ def test_informe_explica_advertencias_de_conservacion(tmp_path: Path) -> None:
                   "tipo_asignacion": ["contingencia", "contingencia_extrema"]}).to_csv(
         tmp_path / "3_dasimetria" / "contingencias.csv", index=False)
     no = pd.DataFrame({"etapa": ["3_dasimetria"], "nombre": ["conservación de nbi"],
-                       "detalle": ["raster 1 vs censo 2"]})
-    nota = _nota_conservacion(tmp_path, no)
-    assert "1 radios (50 personas)" in nota
-    no["detalle"] = "... Esperable: ..."
-    assert _nota_conservacion(tmp_path, no) == ""
+                       "detalle": ["raster 880 vs censo 1000"], "valor": [880.0], "esperado": [1000.0]})
+    texto = _explicacion_conservacion(tmp_path, no)
+    assert "1 radios (50 personas)" in texto
+    assert "120 personas (12,0000 %)" in texto

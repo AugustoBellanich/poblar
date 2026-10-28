@@ -82,9 +82,10 @@ Urbano/rural se define por persona (campos urbana/rural del censo) o por tipo de
 
 ## Informe de la ejecución
 
-Al terminar (o al detenerse por un control), cada ejecución escribe `informe.html`, un archivo único que se abre en cualquier navegador:
+Al terminar (o al detenerse por un control), cada ejecución escribe `informe_<nombre>.html` (por ejemplo `informe_prais2026_2022.html`), un archivo único que se abre en cualquier navegador:
 
-- **Controles:** cumplidos, advertencias y fallas bloqueantes, por etapa, con el detalle de los que no se cumplieron.
+- **Estado general** al principio: completa, completa con advertencias o detenida.
+- **Controles:** cumplidos, advertencias y fallas bloqueantes; por etapa, una barra y la lista de controles con su resultado (las etapas con algo para revisar aparecen abiertas). Las advertencias conocidas se explican con cifras de la propia ejecución.
 - **Resultados:** población, NBI y agua sin red en tierras degradadas (nacional y por región) y las capas publicadas.
 - **Mapas de vista rápida:** población (personas por km², escala logarítmica), tierras degradadas y población en tierras degradadas, del país y de cada región. Se leen reducidos; son para revisar, no para publicar.
 - **Tablas de indicadores**, con la fórmula de cada una.

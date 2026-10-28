@@ -137,7 +137,8 @@ En lugar de la ruta sola, cada insumo acepta un bloque con datos del archivo:
 | `controles.tolerancia_radio_personas` | 0,5 | Diferencia admitida por radio (etapa 3) |
 | `controles.tolerancia_personas_cruce` | 1 | Población no cruzada admitida antes de advertir (etapa 4) |
 | `controles.consistencia_bloqueante` | `true` | Si los cierres sexo/ámbito de la etapa 1 detienen la ejecución |
-| `informe.generar` | `true` | Escribir `informe.html` al terminar (también si la ejecución se detuvo) |
+| `informe.titulo` | Población expuesta a la degradación de tierras | Título del informe |
+| `informe.generar` | `true` | Escribir `informe_<nombre>.html` al terminar (también si la ejecución se detuvo) |
 | `informe.mapas` | `true` | Incluir los mapas de vista rápida (lee los rasters reducidos; desactivar para un informe más rápido) |
 | `rendimiento.filas_por_bloque` | 512 | Filas por bloque al recorrer rasters (memoria; no cambia resultados) |
 | `resultados_esperados` | — | Cifras conocidas a reproducir (no bloqueantes; suelen ir en el registro): `radios.total`, `radios.por_region`, `grilla.ancho`/`alto`, `poblacion_raster`, `cruce.<variable>` (en el grupo expuesto), `publicacion.<producto>` |
