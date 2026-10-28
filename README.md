@@ -54,7 +54,7 @@ En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipyn
 
 Insumos que necesita cada etapa: `radios` → tabla censal, radios y regiones; `grilla` y `publicacion` → cobertura; `cruce` → mapa de degradación.
 
-Detalle de cada etapa: [`docs/metodo.md`](docs/metodo.md). Todas las claves del método y de los insumos: [`docs/configuracion.md`](docs/configuracion.md).
+Recorrido interactivo (insumos, etapas, cálculos, criterios y controles): <https://augustobellanich.github.io/poblar/> ([`docs/index.html`](docs/index.html)). Detalle de cada etapa: [`docs/metodo.md`](docs/metodo.md). Todas las claves del método y de los insumos: [`docs/configuracion.md`](docs/configuracion.md).
 
 ## Controles
 
