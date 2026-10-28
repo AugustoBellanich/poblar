@@ -438,3 +438,22 @@ def test_informe_y_vistas(tmp_path: Path, insumos: Path) -> None:  # noqa: F811
     assert {"poblacion", "degradacion", "expuesta", "cobertura"} <= set(vista.productos(e.carpeta))
     fig = vista.mapa(e.carpeta, "nbi", ancho_px=50)
     assert fig is not None
+
+
+def test_informe_explica_advertencias_de_conservacion(tmp_path: Path) -> None:
+    import pandas as pd
+
+    from poblar.informe import _nota_conservacion, _numeros_es
+
+    assert _numeros_es("raster 4,297,055.6 vs censo 4,297,176 (dif -120.4)") == \
+        "raster 4.297.055,6 vs censo 4.297.176 (dif -120,4)"
+    (tmp_path / "3_dasimetria").mkdir()
+    pd.DataFrame({"id_radio": ["1", "2"], "pobla_total": [30, 50],
+                  "tipo_asignacion": ["contingencia", "contingencia_extrema"]}).to_csv(
+        tmp_path / "3_dasimetria" / "contingencias.csv", index=False)
+    no = pd.DataFrame({"etapa": ["3_dasimetria"], "nombre": ["conservación de nbi"],
+                       "detalle": ["raster 1 vs censo 2"]})
+    nota = _nota_conservacion(tmp_path, no)
+    assert "1 radios (50 personas)" in nota
+    no["detalle"] = "... Esperable: ..."
+    assert _nota_conservacion(tmp_path, no) == ""

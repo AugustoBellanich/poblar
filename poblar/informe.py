@@ -84,6 +84,33 @@ def _figura(src: str, pie: str) -> str:
     return f'<figure><img src="{src}" alt="{html.escape(pie)}"><figcaption>{html.escape(pie)}</figcaption></figure>'
 
 
+def _nota_conservacion(c: Path, no: pd.DataFrame) -> str:
+    """Explica las advertencias de conservación de variables de la etapa 3 (ejecuciones que no la traen)."""
+    sel = no[(no["etapa"] == "3_dasimetria") & no["nombre"].str.startswith("conservación de ")
+             & ~no["nombre"].str.contains("población")]
+    if sel.empty or sel["detalle"].str.contains("Esperable").all():
+        return ""
+    cont = _leer(c / "3_dasimetria" / "contingencias.csv")
+    if cont is None or "tipo_asignacion" not in cont.columns:
+        return ""
+    n3 = cont[cont["tipo_asignacion"] == "contingencia_extrema"]
+    if n3.empty:
+        return ""
+    return ("<p class='nota'>Las advertencias de conservación de variables de la etapa 3 son esperables: "
+            f"{len(n3)} radios ({_num(n3['pobla_total'].sum(), 0)} personas) no tienen píxeles propios "
+            "(contingencia de nivel 3); su población se reparte en píxeles de radios vecinos y toma las tasas "
+            "de esos radios. La población total se conserva; las variables pueden diferir del censo en unas "
+            "decenas o cientos de personas. Detalle en <code>3_dasimetria/contingencias.csv</code>.</p>")
+
+
+def _numeros_es(texto: str) -> str:
+    """Pasa los números con formato inglés de un texto (4,297,055.6) al formato local (4.297.055,6)."""
+    import re
+
+    return re.sub(r"[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?|[+-]?\d+\.\d+",
+                  lambda m: m.group(0).replace(",", "_").replace(".", ",").replace("_", "."), texto)
+
+
 def _tabla_html(df: pd.DataFrame, formatos: dict[str, int] | None = None, texto: tuple[str, ...] = ()) -> str:
     formatos = formatos or {}
     cab = "".join(f'<th class="t">{html.escape(str(c))}</th>' if c in texto else f"<th>{html.escape(str(c))}</th>"
@@ -119,8 +146,11 @@ def _seccion_controles(c: Path) -> str:
     detalle = ""
     if (~ok).any():
         no = ctrl[~ok].assign(tipo=["falla" if b else "advertencia" for b in bloq[~ok]])
+        no["detalle"] = no["detalle"].astype(str).map(_numeros_es)
         detalle = "<h3>Controles no cumplidos</h3>" + _tabla_html(
-            no[["etapa", "nombre", "detalle", "tipo"]].rename(columns=str.capitalize), texto=("Detalle",))
+            no[["etapa", "nombre", "detalle", "tipo"]].rename(columns=str.capitalize),
+            texto=("Etapa", "Nombre", "Detalle", "Tipo"))
+        detalle += _nota_conservacion(c, no)
     return tarjetas + "<h3>Por etapa</h3>" + _tabla_html(por_etapa.rename(columns=str.capitalize)) + detalle
 
 
@@ -174,12 +204,16 @@ def _seccion_mapas(c: Path, cfg: dict[str, Any]) -> str:
     matplotlib.use("Agg")
     disponibles = vista.productos(c)
     figs = []
+    escala = None
     for prod, pie in (("poblacion", "Población (personas por km², escala logarítmica)"),
                       ("degradacion", "Tierras degradadas"),
                       ("expuesta", "Población en tierras degradadas (personas por km²)")):
         if prod in disponibles:
             try:
-                figs.append(_figura(_png(vista.mapa(c, prod)), pie))
+                fig = vista.mapa(c, prod)
+                if prod == "expuesta":
+                    escala = vista.escala_de(fig)
+                figs.append(_figura(_png(fig), pie))
             except Exception as e:  # noqa: BLE001 — una vista que falla no impide el informe
                 log.warning("Vista '%s' no generada: %s", prod, e)
     regiones = []
@@ -189,13 +223,16 @@ def _seccion_mapas(c: Path, cfg: dict[str, Any]) -> str:
         for reg in sorted(n for n in nombres if n != cfg["region"].get("etiqueta_fuera")):
             try:
                 fig, ax = plt.subplots(figsize=(5, 5))
-                vista.mapa(c, "expuesta", region=reg, ax=ax, ancho_px=600, titulo="")
+                vista.mapa(c, "expuesta", region=reg, ax=ax, ancho_px=600, titulo="", escala=escala,
+                           barra=escala is None)
                 regiones.append(_figura(_png(fig), reg))
             except Exception as e:  # noqa: BLE001
                 log.warning("Vista de la región '%s' no generada: %s", reg, e)
     html_ = f'<div class="mapas">{"".join(figs)}</div>' if figs else "<p class='nota'>Sin rasters para mostrar.</p>"
     if regiones:
-        html_ += "<h3>Población en tierras degradadas, por región</h3>" + f'<div class="mapas chicos">{"".join(regiones)}</div>'
+        html_ += ("<h3>Población en tierras degradadas, por región</h3>"
+                  + ("<p class='nota'>Misma escala de colores que el mapa nacional.</p>" if escala else "")
+                  + f'<div class="mapas chicos">{"".join(regiones)}</div>')
     return html_ + ("<p class='nota'>Vistas rápidas a resolución reducida, para revisar. El dato completo está en "
                     "los rasters de la ejecución.</p>")
 

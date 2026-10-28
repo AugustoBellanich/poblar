@@ -104,8 +104,18 @@ def leer(ruta: Path, limites: tuple[float, float, float, float], ancho_px: int,
         return a.astype("float64").filled(np.nan), factor, t
 
 
+def _tierra(carpeta: Path, limites: tuple[float, float, float, float], ancho_px: int) -> np.ndarray | None:
+    """Máscara de píxeles con radio (el país); None si no está el raster de radios."""
+    ruta = carpeta / "3_dasimetria" / "raster_ids_radios.tif"
+    if not ruta.exists():
+        return None
+    ids, _, _ = leer(ruta, limites, ancho_px, Resampling.nearest)
+    return np.nan_to_num(ids, nan=0) > 0
+
+
 def mapa(carpeta: str | Path, producto: str = "poblacion", region: str | None = None,
-         ancho_px: int = 900, ax: Any = None, titulo: str | None = None):
+         ancho_px: int = 900, ax: Any = None, titulo: str | None = None,
+         escala: tuple[float, float] | None = None, barra: bool = True):
     """Mapa de vista rápida de un producto.
 
     Args:
@@ -116,7 +126,10 @@ def mapa(carpeta: str | Path, producto: str = "poblacion", region: str | None = 
         region: Acercamiento a una región (por defecto, el país sin la región «fuera»).
         ancho_px: Ancho de la lectura reducida.
         ax: Ejes de matplotlib donde dibujar (opcional).
-        titulo: Título (por defecto, el del producto).
+        titulo: Título (por defecto, el del producto; ``""`` sin título).
+        escala: Densidades mínima y máxima de la escala de colores (por defecto, según los datos).
+            Sirve para comparar varios mapas con la misma escala.
+        barra: Dibujar la barra de colores.
 
     Returns:
         La figura de matplotlib.
@@ -136,8 +149,17 @@ def mapa(carpeta: str | Path, producto: str = "poblacion", region: str | None = 
     if nombre:
         ax.set_title(nombre + (f" — {region}" if region else ""), fontsize=11, loc="left")
 
+    tierra = _tierra(carpeta, limites, ancho_px)
+
+    def _recortar(a: np.ndarray) -> np.ndarray:
+        """Deja sin dibujar lo que está fuera de los radios (mar, países vecinos)."""
+        if tierra is None or tierra.shape != a.shape:
+            return a
+        return np.where(tierra, a, np.nan)
+
     if producto in ("degradacion", "cobertura"):
         cat, _, _ = leer(_ruta(carpeta, producto), limites, ancho_px, Resampling.mode)
+        cat = _recortar(cat)
         if producto == "degradacion":
             cfg = _cfg(carpeta)
             grupo = cfg["cruce"].get("grupo_expuesto")
@@ -171,6 +193,7 @@ def mapa(carpeta: str | Path, producto: str = "poblacion", region: str | None = 
     dens = valores / km2
     if producto == "expuesta":
         cat, _, _ = leer(_ruta(carpeta, "degradacion"), limites, ancho_px, Resampling.mode)
+        cat = _recortar(cat)
         cfg = _cfg(carpeta)
         grupo = cfg["cruce"].get("grupo_expuesto")
         exp = [c["clase"] for c in cfg["cruce"]["clases"] if c.get("binario") == grupo]
@@ -178,17 +201,31 @@ def mapa(carpeta: str | Path, producto: str = "poblacion", region: str | None = 
         ax.imshow(fondo, cmap=ListedColormap(["#ecebe6"]), interpolation="nearest")
         dens = np.where(np.isin(cat, exp), dens, np.nan)
     else:
-        fondo = np.where(np.isnan(valores), np.nan, 0.0)
+        fondo = _recortar(np.where(np.isnan(valores), np.nan, 0.0))
         ax.imshow(fondo, cmap=ListedColormap(["#ecebe6"]), interpolation="nearest")
     dens = np.where(dens > 0, dens, np.nan)
     if np.isfinite(dens).any():
-        vmin = max(np.nanpercentile(dens, 2), 1e-3)
-        vmax = max(np.nanpercentile(dens, 99.8), vmin * 10)
+        if escala is None:
+            vmin = max(np.nanpercentile(dens, 2), 1e-3)
+            vmax = max(np.nanpercentile(dens, 99.8), vmin * 10)
+        else:
+            vmin, vmax = escala
         im = ax.imshow(dens, cmap="magma_r", norm=LogNorm(vmin=vmin, vmax=vmax), interpolation="nearest")
-        cb = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
-        cb.set_label("personas por km²", fontsize=8)
-        cb.ax.tick_params(labelsize=7)
+        if barra:
+            cb = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
+            cb.set_label("personas por km²", fontsize=8)
+            cb.ax.tick_params(labelsize=7)
     return fig
+
+
+def escala_de(fig) -> tuple[float, float] | None:
+    """Escala de colores (mín., máx.) de un mapa de cantidades, para reutilizarla en otros."""
+    for ax in fig.axes:
+        for im in ax.get_images():
+            norm = im.norm
+            if norm.__class__.__name__ == "LogNorm":
+                return float(norm.vmin), float(norm.vmax)
+    return None
 
 
 def tabla_expuesta(carpeta: str | Path) -> pd.DataFrame:

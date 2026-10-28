@@ -348,12 +348,18 @@ def _controlar(ejecucion: Ejecucion, radios: gpd.GeoDataFrame, totales: dict[str
                                 f"{n_mal} radios difieren más de {tol_radio} personas "
                                 f"(máx. {dif_r.max():.4f})", n_mal, 0))
 
+    n3 = int(m3.sum())
     for v in variables:
         s_r = totales[v["producto"]]
         s_c = float(radios.loc[radios["pobla_total"] > 0, v["numerador"]].fillna(0).sum())
         ok = abs(s_r - s_c) <= max(tol_rel * s_c, 1.0)
+        pct = 100 * (s_r - s_c) / s_c if s_c else 0.0
+        detalle = f"raster {s_r:,.1f} vs censo {s_c:,.0f} (dif {s_r - s_c:+,.1f}; {pct:+.4f} %)"
+        if not ok and n3:
+            detalle += (f". Esperable: la población de {n3} radios con contingencia de nivel 3 queda en píxeles "
+                        "de radios vecinos y toma sus tasas; la población total se conserva")
         ejecucion.controlar(Control(ETAPA, f"conservación de {v['producto']}", ok,
-                                    f"raster {s_r:,.1f} vs censo {s_c:,.0f}", s_r, s_c, bloqueante=False))
+                                    detalle, s_r, s_c, bloqueante=False))
         ejecucion.balance(ETAPA, f"variable {v['producto']}", censo=s_c, raster=round(s_r, 3))
 
     esperado = obtener(cfg, "resultados_esperados.poblacion_raster", None)
