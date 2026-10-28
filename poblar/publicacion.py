@@ -34,7 +34,7 @@ from rasterio.windows import Window
 from poblar.config import obtener
 from poblar.cruce import rutas_productos
 from poblar.grilla import ventanas_por_filas
-from poblar.trazabilidad import Control, Ejecucion, log
+from poblar.trazabilidad import SUFIJO_PARCIAL, Control, Ejecucion, log
 
 ETAPA = "5_publicacion"
 NODATA = -9999.0
@@ -71,11 +71,17 @@ def reproyectar(origen: Path, referencia: Path, salida: Path, remuestreo: str, b
 
 def _publicar_uno(prod: str, origen: Path, referencia: Path, salida: Path, remuestreo: str, bloque: int,
                   compresion: str) -> dict[str, Any]:
-    """Publica un raster y devuelve su fila de control (se ejecuta en un proceso aparte)."""
-    reproyectar(origen, referencia, salida, remuestreo, bloque, compresion)
-    s_in, s_out = _suma(origen), _suma(salida)
-    with rasterio.open(salida) as s, rasterio.open(referencia) as ref:
+    """Publica un raster y devuelve su fila de control (se ejecuta en un proceso aparte).
+
+    Se escribe con el sufijo ``.parcial`` y se renombra recién cuando está completo y controlado:
+    mientras tanto, el guardado de avance no lo copia.
+    """
+    tmp = salida.with_name(salida.name + SUFIJO_PARCIAL)
+    reproyectar(origen, referencia, tmp, remuestreo, bloque, compresion)
+    s_in, s_out = _suma(origen), _suma(tmp)
+    with rasterio.open(tmp) as s, rasterio.open(referencia) as ref:
         misma = (s.width, s.height, s.crs, s.transform) == (ref.width, ref.height, ref.crs, ref.transform)
+    os.replace(tmp, salida)
     dif = s_out - s_in
     return {"producto": prod, "archivo": salida.name, "suma_origen": round(s_in, 3),
             "suma_publicada": round(s_out, 3), "diferencia": round(dif, 3),

@@ -302,3 +302,16 @@ def test_publicacion_retoma_lo_ya_publicado(tmp_path: Path, insumos: Path) -> No
     assert (d2 / "NBI_2010.tif").exists()
     assert (d2 / "POB_2010.tif").stat().st_mtime == mtime_pob   # no se volvió a generar
     assert set(pd.read_csv(d2 / "publicacion.csv")["producto"]) == {"poblacion_dasimetrica", "nbi"}
+
+
+def test_sincronizar_no_copia_parciales_y_verifica(tmp_path: Path) -> None:
+    from poblar.trazabilidad import sincronizar
+
+    a, b = tmp_path / "a", tmp_path / "b"
+    (a / "x").mkdir(parents=True)
+    (a / "x" / "listo.tif").write_bytes(b"1" * 1000)
+    (a / "x" / "en_curso.tif.parcial").write_bytes(b"2" * 10)
+    assert sincronizar(a, b, verificar=True) == 1
+    assert (b / "x" / "listo.tif").read_bytes() == b"1" * 1000
+    assert not (b / "x" / "en_curso.tif.parcial").exists()
+    assert not list(b.rglob("*.parcial"))

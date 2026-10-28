@@ -6,6 +6,7 @@ import csv
 import hashlib
 import json
 import logging
+import os
 import platform
 import shutil
 import subprocess
@@ -229,15 +230,29 @@ class Ejecucion:
         return ruta
 
 
-def sincronizar(origen: Path, destino: Path) -> int:
+SUFIJO_PARCIAL = ".parcial"
+
+
+def sincronizar(origen: Path, destino: Path, verificar: bool = False) -> int:
     """Copia a ``destino`` los archivos de ``origen`` que faltan o difieren en tamaño o fecha.
+
+    Los archivos que todavía se están escribiendo llevan el sufijo ``.parcial`` y no se copian.
+    Cada copia se escribe primero con ese sufijo y después se renombra, para que en el destino
+    nunca quede un archivo a medio copiar con el nombre definitivo.
+
+    Args:
+        verificar: Si es True, compara el sha256 de cada archivo copiado con el de origen y
+            vuelve a copiarlo una vez si no coincide.
+
+    Raises:
+        OSError: Si con ``verificar`` un archivo sigue sin coincidir después de recopiarlo.
 
     Returns:
         Cantidad de archivos copiados.
     """
     copiados = 0
-    for p in origen.rglob("*"):
-        if not p.is_file():
+    for p in sorted(origen.rglob("*")):
+        if not p.is_file() or p.name.endswith(SUFIJO_PARCIAL):
             continue
         q = destino / p.relative_to(origen)
         st = p.stat()
@@ -246,6 +261,14 @@ def sincronizar(origen: Path, destino: Path) -> int:
             if sq.st_size == st.st_size and int(sq.st_mtime) == int(st.st_mtime):
                 continue
         q.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(p, q)
+        for intento in (1, 2):
+            tmp = q.with_name(q.name + SUFIJO_PARCIAL)
+            shutil.copy2(p, tmp)
+            os.replace(tmp, q)
+            if not verificar or sha256(p) == sha256(q):
+                break
+            if intento == 2:
+                raise OSError(f"La copia de {p} en {q} no coincide con el original (sha256).")
+            log.warning("La copia de %s no coincide con el original; se vuelve a copiar", p.name)
         copiados += 1
     return copiados

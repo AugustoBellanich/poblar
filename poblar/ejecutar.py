@@ -87,7 +87,7 @@ def ejecutar(
         if trabajo is not None:
             destino = Path(salida) / ejecucion.carpeta.name
             log.info("Copiando la ejecución a %s", destino)
-            sincronizar(ejecucion.carpeta, destino)
+            sincronizar(ejecucion.carpeta, destino, verificar=True)
             ejecucion.carpeta = destino
     fallas = [v for v in ejecucion.controles if not v.ok]
     log.info("Ejecución terminada: %d controles, %d con advertencia o falla", len(ejecucion.controles), len(fallas))
