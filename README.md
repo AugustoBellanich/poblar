@@ -21,10 +21,10 @@ En Colab: [`cuadernos/ejecutar_en_colab.ipynb`](cuadernos/ejecutar_en_colab.ipyn
 |---|---|---|
 | 0 | Registro de insumos (hash, metadatos, controles) | ✔ |
 | 1 | Base de radios (tabla + cartografía, región, orden de rasterización) | ✔ |
-| 2 | Grilla de trabajo y cobertura del suelo | en prueba |
-| 3 | Mapeo dasimétrico | en prueba |
-| 4 | Cruce con capas temáticas | en prueba |
-| 5 | Publicación (rasters) | en prueba |
+| 2 | Grilla de trabajo y cobertura del suelo | ✔ |
+| 3 | Mapeo dasimétrico | ✔ |
+| 4 | Cruce con capas temáticas | ✔ |
+| 5 | Publicación (rasters) | ✔ |
 
 ### Productos de cada ejecución
 
