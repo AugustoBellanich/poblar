@@ -5,9 +5,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Herramientas de GDAL (las etapas 2 a 6 las usan; sin ellas las pruebas se saltean)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install -e ".[dev]"
       - run: ruff check poblar tests
-      - run: python -m pytest -q
+      - run: python -m pytest -q -rs
